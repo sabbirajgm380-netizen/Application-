@@ -4,7 +4,6 @@ import { useTranslation } from '@/hooks/use-language';
 import { Home, LayoutGrid, Bookmark, User, Menu } from 'lucide-react-native';
 import { Platform, View, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NotificationsBell } from '@/components/NotificationsBell';
 import { Sidebar } from '@/components/Sidebar';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useState, createContext, useContext } from 'react';
@@ -59,7 +58,6 @@ export default function TabLayout() {
             <Menu color={themeColors.text} size={24} />
           </Pressable>
         ) : null,
-        headerRight: () => <NotificationsBell />,
         tabBarStyle: {
           display: 'none',
           backgroundColor: themeColors.background,

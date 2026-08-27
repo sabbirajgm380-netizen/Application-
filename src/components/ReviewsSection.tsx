@@ -14,9 +14,6 @@ import {
   Star,
   ThumbsUp,
   CheckCircle,
-  MessageSquare,
-  Reply,
-  Send,
   Sparkles,
   Edit3,
   Trash2,
@@ -43,24 +40,6 @@ const RATING_LABELS: Record<number, string> = {
   5: 'Masterpiece 🤩',
 };
 
-function renderCommentWithMentions(content: string, themePrimary: string, baseStyle: any) {
-  const parts = content.split(/((?:^|[^\w])@[\w]{3,30})/g);
-  return (
-    <Text style={baseStyle}>
-      {parts.map((part, index) => {
-        if (/@[\w]{3,30}/.test(part)) {
-          return (
-            <Text key={index} style={{ color: themePrimary, fontWeight: '700' }}>
-              {part}
-            </Text>
-          );
-        }
-        return <Text key={index}>{part}</Text>;
-      })}
-    </Text>
-  );
-}
-
 export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
   const themeColors = useTheme();
   const { user } = useAuth();
@@ -74,8 +53,6 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
     editReview,
     deleteReview,
     toggleHelpful,
-    addReply,
-    getRepliesForReview,
   } = useReviews();
   const { isFollowing, toggleFollow } = useSocial();
   const { isXS } = useResponsive();
@@ -87,7 +64,6 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
   // Main Composer State
   const [selectedRating, setSelectedRating] = useState<number>(userReview?.rating || 5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
-  const [comment, setComment] = useState(userReview?.comment || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeSort, setActiveSort] = useState<'top' | 'recent'>('top');
@@ -95,16 +71,11 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
   // Inline Review Edit State
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [inlineEditRating, setInlineEditRating] = useState<number>(5);
-  const [inlineEditComment, setInlineEditComment] = useState<string>('');
-  const [replyingToId, setReplyingToId] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState('');
-  const [isReplying, setIsReplying] = useState(false);
 
   // Keep composer in sync when userReview changes
   useEffect(() => {
     if (userReview) {
       setSelectedRating(userReview.rating);
-      setComment(userReview.comment);
     }
   }, [userReview]);
 
@@ -118,11 +89,10 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
   };
 
   const handleSubmitReview = async () => {
-    if (!comment.trim()) return;
     setIsSubmitting(true);
     try {
-      await addReview(mediaId, selectedRating, comment.trim());
-      showToast(userReview ? 'Review updated successfully!' : 'Review published!');
+      await addReview(mediaId, selectedRating);
+      showToast(userReview ? 'Rating updated successfully!' : 'Rating published!');
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Unable to save your review.');
     } finally {
@@ -137,22 +107,21 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
         if (editingReviewId === reviewId) {
           setEditingReviewId(null);
         }
-        setComment('');
         setSelectedRating(5);
-        showToast('Comment deleted');
+        showToast('Rating deleted');
       } catch (error) {
-        showToast(error instanceof Error ? error.message : 'Unable to delete the comment.');
+        showToast(error instanceof Error ? error.message : 'Unable to delete the rating.');
       }
     };
 
     if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm('Are you sure you want to delete this comment?')) {
+      if (typeof window !== 'undefined' && window.confirm('Are you sure you want to delete this rating?')) {
         await performDelete();
       }
     } else {
       Alert.alert(
-        'Delete Comment',
-        'Are you sure you want to delete your review?',
+        'Delete Rating',
+        'Are you sure you want to delete your rating?',
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Delete', style: 'destructive', onPress: performDelete },
@@ -164,34 +133,16 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
   const startInlineEdit = (rev: Review) => {
     setEditingReviewId(rev.id);
     setInlineEditRating(rev.rating);
-    setInlineEditComment(rev.comment);
   };
 
   const cancelInlineEdit = () => {
     setEditingReviewId(null);
-    setInlineEditComment('');
   };
 
   const saveInlineEdit = async (reviewId: string) => {
-    if (!inlineEditComment.trim()) return;
-    await editReview(reviewId, inlineEditRating, inlineEditComment.trim());
+    await editReview(reviewId, inlineEditRating);
     setEditingReviewId(null);
-    showToast('Comment updated!');
-  };
-
-  const submitReply = async (parentId: string) => {
-    if (!replyText.trim()) return;
-    setIsReplying(true);
-    try {
-      await addReply(parentId, mediaId, replyText.trim());
-      setReplyText('');
-      setReplyingToId(null);
-      showToast('Reply posted!');
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Unable to post reply.');
-    } finally {
-      setIsReplying(false);
-    }
+    showToast('Rating updated!');
   };
 
   const sortedReviews = [...reviews].sort((a, b) => {
@@ -208,7 +159,7 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
       {/* Header */}
       <View style={[styles.headerRow, isXS && styles.headerRowSmall]}>
         <View style={styles.titleRow}>
-          <MessageSquare size={20} color={themeColors.primary} />
+          <Star size={20} color={themeColors.primary} />
           <Text style={[styles.sectionTitle, isXS && styles.sectionTitleSmall]}>Ratings & Community Reviews</Text>
         </View>
         <View style={styles.countBadge}>
@@ -222,7 +173,7 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
       <View style={styles.composerCard}>
         <View style={styles.composerHeader}>
           <Text style={styles.composerTitle}>
-            {userReview ? '✏️ Your Review (Edit or Update)' : `How was ${mediaTitle || 'this title'}?`}
+            {userReview ? '✏️ Your Rating (Edit or Update)' : `How was ${mediaTitle || 'this title'}?`}
           </Text>
           {userReview && (
             <Pressable
@@ -260,17 +211,6 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
           </Text>
         </View>
 
-        {/* Comment Input */}
-        <TextInput
-          style={styles.commentInput}
-          placeholder="Write your review… Use @username to notify someone."
-          placeholderTextColor="#68687C"
-          multiline
-          numberOfLines={3}
-          value={comment}
-          onChangeText={setComment}
-        />
-        <Text style={styles.mentionHint}>Tag a member with @username. Only existing AniFlix usernames can be tagged.</Text>
 
         {/* Action Button */}
         <View style={styles.composerActionRow}>
@@ -285,15 +225,14 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
             style={({ pressed }) => [
               styles.submitBtn,
               { backgroundColor: themeColors.primary },
-              (!comment.trim() || isSubmitting) && styles.submitBtnDisabled,
+              isSubmitting && styles.submitBtnDisabled,
               pressed && { opacity: 0.8 },
             ]}
-            disabled={!comment.trim() || isSubmitting}
+            disabled={isSubmitting}
             onPress={handleSubmitReview}
           >
-            <Send size={15} color="#FFF" style={{ marginRight: 6 }} />
             <Text style={styles.submitBtnText}>
-              {isSubmitting ? 'Saving...' : userReview ? 'Save Changes' : 'Post Review'}
+              {isSubmitting ? 'Saving...' : userReview ? 'Save Changes' : 'Post Rating'}
             </Text>
           </Pressable>
         </View>
@@ -338,7 +277,6 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
               rev.userId === currentUserId ||
               (rev.userId.startsWith('guest-') && userReview?.id === rev.id);
             const isEditing = editingReviewId === rev.id;
-            const replies = getRepliesForReview(rev.id);
             const avatarInitial = rev.userName?.charAt(0)?.toUpperCase() || 'A';
 
             return (
@@ -443,27 +381,13 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
                       </Text>
                     </View>
 
-                    {/* Inline Comment Input */}
-                    <TextInput
-                      style={styles.inlineTextInput}
-                      multiline
-                      numberOfLines={3}
-                      value={inlineEditComment}
-                      onChangeText={setInlineEditComment}
-                    />
-
-                    {/* Save / Cancel buttons */}
                     <View style={styles.inlineActionsRow}>
                       <Pressable style={styles.inlineCancelBtn} onPress={cancelInlineEdit}>
                         <X size={14} color="#A0A0B8" />
                         <Text style={styles.inlineCancelText}>Cancel</Text>
                       </Pressable>
                       <Pressable
-                        style={[
-                          styles.inlineSaveBtn,
-                          !inlineEditComment.trim() && { opacity: 0.5 },
-                        ]}
-                        disabled={!inlineEditComment.trim()}
+                        style={styles.inlineSaveBtn}
                         onPress={() => saveInlineEdit(rev.id)}
                       >
                         <Check size={14} color="#FFF" />
@@ -471,58 +395,9 @@ export function ReviewsSection({ mediaId, mediaTitle }: ReviewsSectionProps) {
                       </Pressable>
                     </View>
                   </View>
-                ) : (
-                  renderCommentWithMentions(rev.comment, themeColors.primary, styles.reviewComment)
-                )}
+                ) : null}
 
-                {replies.length > 0 && (
-                  <View style={styles.repliesList}>
-                    {replies.map((reply) => (
-                      <View key={reply.id} style={styles.replyCard}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                          <Text style={styles.replyAuthor}>{reply.userName}</Text>
-                          {(reply.userId === currentUserId || user?.email === 'admin@aniflix.com') && (
-                            <Pressable onPress={() => void handleDeleteReview(reply.id)} style={{ padding: 4 }}>
-                              <Trash2 size={12} color="#FF5252" />
-                            </Pressable>
-                          )}
-                        </View>
-                        {renderCommentWithMentions(reply.comment, themeColors.primary, styles.replyComment)}
-                      </View>
-                    ))}
-                  </View>
-                )}
 
-                {replyingToId === rev.id ? (
-                  <View style={styles.replyComposer}>
-                    <TextInput
-                      style={styles.replyInput}
-                      value={replyText}
-                      onChangeText={setReplyText}
-                      placeholder="Write a reply… Use @username to tag someone."
-                      placeholderTextColor="#68687C"
-                      multiline
-                      maxLength={1000}
-                    />
-                    <View style={styles.replyActions}>
-                      <Pressable style={styles.replyCancelButton} onPress={() => { setReplyingToId(null); setReplyText(''); }}>
-                        <Text style={styles.replyCancelText}>Cancel</Text>
-                      </Pressable>
-                      <Pressable
-                        style={[styles.replySubmitButton, (!replyText.trim() || isReplying) && styles.submitBtnDisabled]}
-                        disabled={!replyText.trim() || isReplying}
-                        onPress={() => void submitReply(rev.id)}
-                      >
-                        <Text style={styles.replySubmitText}>{isReplying ? 'Posting…' : 'Reply'}</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                ) : (
-                  <Pressable style={styles.replyButton} onPress={() => setReplyingToId(rev.id)}>
-                    <Reply size={13} color="#00D2FF" />
-                    <Text style={styles.replyButtonText}>Reply</Text>
-                  </Pressable>
-                )}
 
                 {/* Footer with Helpful Button & Author Actions (Edit / Delete) */}
                 <View style={styles.reviewFooter}>

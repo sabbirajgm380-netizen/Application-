@@ -12,11 +12,9 @@ export type Review = {
   userName: string;
   userAvatar?: string;
   rating: number; // 1 to 5
-  comment: string;
   createdAt: string;
   helpfulCount: number;
   isVerified?: boolean;
-  parentId?: string | null;
 };
 
 type RatingStats = {
@@ -30,11 +28,9 @@ type ReviewsContextType = {
   getReviewsForMedia: (mediaId: string) => Review[];
   getStatsForMedia: (mediaId: string) => RatingStats;
   getUserReview: (mediaId: string) => Review | undefined;
-  addReview: (mediaId: string, rating: number, comment: string) => Promise<void>;
-  editReview: (reviewId: string, rating: number, comment: string) => Promise<void>;
+  addReview: (mediaId: string, rating: number) => Promise<void>;
+  editReview: (reviewId: string, rating: number) => Promise<void>;
   deleteReview: (reviewId: string) => Promise<void>;
-  addReply: (parentId: string, mediaId: string, comment: string) => Promise<void>;
-  getRepliesForReview: (reviewId: string) => Review[];
   toggleHelpful: (reviewId: string) => Promise<void>;
 };
 
@@ -51,7 +47,6 @@ const DEFAULT_REVIEWS: Review[] = [
     userName: 'CinemaGeek99',
     userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&q=80',
     rating: 5,
-    comment: 'An absolute masterpiece of sci-fi cinema! The dream within a dream concept and Hans Zimmer soundtrack give me goosebumps every single watch.',
     createdAt: '2 hours ago',
     helpfulCount: 42,
     isVerified: true,
@@ -63,7 +58,6 @@ const DEFAULT_REVIEWS: Review[] = [
     userName: 'Sarah Miller',
     userAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=80',
     rating: 5,
-    comment: 'The visual effects and mind-bending story are unmatched. 10/10 streaming experience on AniFlix!',
     createdAt: '1 day ago',
     helpfulCount: 19,
     isVerified: true,
@@ -75,7 +69,6 @@ const DEFAULT_REVIEWS: Review[] = [
     userName: 'LeviAckermanFan',
     userAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=120&q=80',
     rating: 5,
-    comment: 'Greatest plot twists in anime history. The animation quality and character development are on another level!',
     createdAt: '3 hours ago',
     helpfulCount: 56,
     isVerified: true,
@@ -87,7 +80,6 @@ const DEFAULT_REVIEWS: Review[] = [
     userName: 'AnimeAesthetic',
     userAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120&q=80',
     rating: 5,
-    comment: 'Makoto Shinkai does not miss. The art, the music by RADWIMPS, the emotions... brought tears to my eyes.',
     createdAt: '5 hours ago',
     helpfulCount: 31,
     isVerified: true,
@@ -99,7 +91,6 @@ const DEFAULT_REVIEWS: Review[] = [
     userName: 'Tanjiro_Official',
     userAvatar: 'https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=120&q=80',
     rating: 5,
-    comment: 'Ufotable animation is peak cinema. Episode 19 is unforgettable!',
     createdAt: '1 day ago',
     helpfulCount: 48,
     isVerified: true,
@@ -111,7 +102,6 @@ const DEFAULT_REVIEWS: Review[] = [
     userName: 'WalterWhite99',
     userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&q=80',
     rating: 5,
-    comment: 'The pinnacle of modern television drama. Incredible writing from pilot to finale.',
     createdAt: '2 days ago',
     helpfulCount: 65,
     isVerified: true,
@@ -123,7 +113,6 @@ const DEFAULT_REVIEWS: Review[] = [
     userName: 'ShadowMonarch',
     userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&q=80',
     rating: 5,
-    comment: 'ARRISE! The hype around Sung Jinwoo is completely justified. Outstanding pacing and fight choreography.',
     createdAt: '4 hours ago',
     helpfulCount: 29,
     isVerified: true,
@@ -188,10 +177,8 @@ export function ReviewsProvider({ children }: { children: React.ReactNode }) {
             id: c.id,
             mediaId: c.movie_id || c.media_id,
             userId: c.user_id,
-            parentId: c.parent_id || null,
             userName: c.user_name || 'Community Streamer',
             rating: c.rating || 5,
-            comment: c.content || c.comment || '',
             createdAt: c.created_at ? new Date(c.created_at).toLocaleDateString() : 'Recently',
             helpfulCount: c.likes_count || c.helpful_count || 0,
             isVerified: true,
@@ -229,11 +216,7 @@ export function ReviewsProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getReviewsForMedia = (mediaId: string): Review[] => {
-    return reviews.filter((r) => String(r.mediaId) === String(mediaId) && !r.parentId);
-  };
-
-  const getRepliesForReview = (reviewId: string): Review[] => {
-    return reviews.filter((review) => review.parentId === reviewId);
+    return reviews.filter((r) => String(r.mediaId) === String(mediaId));
   };
 
   const getStatsForMedia = (mediaId: string): RatingStats => {
@@ -266,13 +249,7 @@ export function ReviewsProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const addReview = async (mediaId: string, rating: number, comment: string) => {
-    const moderation = moderateContent(comment);
-    if (!moderation.isSafe) {
-      throw new Error(moderation.reason || 'Your comment violates community safety rules.');
-    }
-    const cleanComment = moderation.sanitizedText;
-
+  const addReview = async (mediaId: string, rating: number) => {
     const authorName = profile?.full_name || user?.email?.split('@')[0] || 'AniFlix Streamer';
     const authorId = user?.id || 'guest-' + Date.now();
 
@@ -288,46 +265,20 @@ export function ReviewsProvider({ children }: { children: React.ReactNode }) {
       updated[existingIndex] = {
         ...existing,
         rating,
-        comment: cleanComment,
         createdAt: 'Just now (edited)',
       };
 
-      // Sync to Supabase
-      if (user?.id && !user.id.startsWith('guest-') && !existing.id.startsWith('rev-')) {
-        const { error } = await supabase
-          .from('comments')
-          .update({
-            content: cleanComment,
-            rating,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id);
-        if (error) throw new Error(error.message);
-      }
+      // Skip DB sync since comments table is dropped, use local state only
+      // (Any future DB sync should be to a dedicated 'reviews' or 'ratings' table)
     } else {
       let newId = 'rev-' + Date.now();
-      if (user?.id && !user.id.startsWith('guest-')) {
-        const { data, error } = await supabase
-          .from('comments')
-          .insert({
-            movie_id: String(mediaId),
-            user_id: user.id,
-            content: cleanComment,
-            rating,
-            likes_count: 0,
-          })
-          .select('id')
-          .single();
-        if (error) throw new Error(error.message);
-        newId = data.id;
-      }
+      // Skip DB insert since comments table is dropped, use local state only
       const newReview: Review = {
         id: newId,
         mediaId: String(mediaId),
         userId: authorId,
         userName: authorName,
         rating,
-        comment: cleanComment,
         createdAt: 'Just now',
         helpfulCount: 0,
         isVerified: true,
@@ -338,35 +289,18 @@ export function ReviewsProvider({ children }: { children: React.ReactNode }) {
     await saveReviews(updated);
   };
 
-  const editReview = async (reviewId: string, rating: number, comment: string) => {
-    const moderation = moderateContent(comment);
-    if (!moderation.isSafe) {
-      throw new Error(moderation.reason || 'Your comment violates community safety rules.');
-    }
-    const cleanComment = moderation.sanitizedText;
-
+  const editReview = async (reviewId: string, rating: number) => {
     const currentUserId = user?.id || 'guest-user';
     const target = reviews.find((review) => review.id === reviewId && review.userId === currentUserId);
-    if (!target) throw new Error('You can only edit your own comment.');
+    if (!target) throw new Error('You can only edit your own rating.');
 
-    if (user?.id && !user.id.startsWith('guest-') && !reviewId.startsWith('rev-')) {
-      const { error } = await supabase
-        .from('comments')
-        .update({
-          content: cleanComment,
-          rating,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', reviewId);
-      if (error) throw new Error(error.message);
-    }
+    // Skip DB sync since comments table is dropped, use local state only
 
     const updated = reviews.map((r) => {
       if (r.id === reviewId && r.userId === currentUserId) {
         return {
           ...r,
           rating,
-          comment: cleanComment,
           createdAt: r.createdAt.includes('edited') ? r.createdAt : r.createdAt + ' · edited',
         };
       }
@@ -381,61 +315,13 @@ export function ReviewsProvider({ children }: { children: React.ReactNode }) {
     const target = reviews.find((review) => review.id === reviewId && (review.userId === currentUserId || isAdmin));
     if (!target) throw new Error('You can only delete your own comment.');
 
-    if (user?.id && !user.id.startsWith('guest-') && !reviewId.startsWith('rev-')) {
-      const { error } = await supabase
-        .from('comments')
-        .delete()
-        .eq('id', reviewId);
-      if (error) throw new Error(error.message);
-    }
+    // Skip DB delete since comments table is dropped, use local state only
 
-    // A database parent delete cascades to its replies. Mirror that same
-    // outcome in memory immediately so every screen gets the same state.
+    // Delete locally
     const updated = reviews.filter(
-      (review) => review.id !== reviewId && review.parentId !== reviewId
+      (review) => review.id !== reviewId
     );
     await saveReviews(updated);
-  };
-
-  const addReply = async (parentId: string, mediaId: string, comment: string) => {
-    const moderation = moderateContent(comment);
-    if (!moderation.isSafe) {
-      throw new Error(moderation.reason || 'Your reply violates community safety rules.');
-    }
-    const cleanComment = moderation.sanitizedText;
-
-    const authorId = user?.id;
-    if (!authorId) throw new Error('Please sign in before replying.');
-
-    const { data, error } = await supabase
-      .from('comments')
-      .insert({
-        movie_id: String(mediaId),
-        user_id: authorId,
-        parent_id: parentId,
-        content: cleanComment,
-        rating: 5,
-        likes_count: 0,
-      })
-      .select('id, created_at')
-      .single();
-
-    if (error) throw new Error(error.message);
-
-    const reply: Review = {
-      id: data.id,
-      parentId,
-      mediaId: String(mediaId),
-      userId: authorId,
-      userName: profile?.username || profile?.full_name || user.email?.split('@')[0] || 'AniFlix Streamer',
-      userAvatar: profile?.avatar_url || undefined,
-      rating: 5,
-      comment: cleanComment,
-      createdAt: 'Just now',
-      helpfulCount: 0,
-      isVerified: true,
-    };
-    await saveReviews([reply, ...reviews]);
   };
 
   const toggleHelpful = async (reviewId: string) => {
@@ -498,8 +384,6 @@ export function ReviewsProvider({ children }: { children: React.ReactNode }) {
         addReview,
         editReview,
         deleteReview,
-        addReply,
-        getRepliesForReview,
         toggleHelpful,
       }}
     >

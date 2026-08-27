@@ -11,7 +11,6 @@ import { GamificationProvider } from '@/hooks/useGamification';
 import { AppThemeProvider, useTheme, useColorMode } from '@/hooks/use-theme';
 import { AdMobProvider } from '@/hooks/useAdMob';
 import { SocialProvider } from '@/hooks/useSocial';
-import { NotificationsProvider } from '@/hooks/useNotifications';
 import { AniFlixSplashScreen } from '@/components/AniFlixSplashScreen';
 import { AdMobRewardedModal } from '@/components/AdMobRewardedModal';
 
@@ -116,19 +115,17 @@ export default function RootLayout() {
     <AuthProvider>
       <FavoritesProvider>
         <ReviewsProvider>
-          <NotificationsProvider>
-            <GamificationProvider>
-              <AppThemeProvider>
-                <LanguageProvider>
-                  <SocialProvider>
-                    <AdMobProvider>
-                      <RootNavigation showSplash={showSplash} onFinishSplash={() => setShowSplash(false)} />
-                    </AdMobProvider>
-                  </SocialProvider>
-                </LanguageProvider>
-              </AppThemeProvider>
-            </GamificationProvider>
-          </NotificationsProvider>
+          <GamificationProvider>
+            <AppThemeProvider>
+              <LanguageProvider>
+                <SocialProvider>
+                  <AdMobProvider>
+                    <RootNavigation showSplash={showSplash} onFinishSplash={() => setShowSplash(false)} />
+                  </AdMobProvider>
+                </SocialProvider>
+              </LanguageProvider>
+            </AppThemeProvider>
+          </GamificationProvider>
         </ReviewsProvider>
       </FavoritesProvider>
     </AuthProvider>
