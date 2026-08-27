@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { Alert } from 'react-native';
 import { useAuth } from './useAuth';
 import { ADMOB_REWARDS } from '@/constants/admob';
 import { recordRewardedAdToSupabase } from '@/lib/admob';
@@ -58,11 +59,15 @@ export function AdMobProvider({ children }: { children: React.ReactNode }) {
     const userId = user?.id || 'guest-user';
     
     // Record to Supabase
-    await recordRewardedAdToSupabase(userId, currentRewardCoins, currentRewardType);
+    const result = await recordRewardedAdToSupabase(userId, currentRewardCoins, currentRewardType);
 
-    // Trigger local callback
-    if (onRewardCallback) {
-      onRewardCallback(currentRewardCoins);
+    if (result.success) {
+      // Trigger local callback
+      if (onRewardCallback) {
+        onRewardCallback(currentRewardCoins);
+      }
+    } else {
+      Alert.alert('Reward Failed', result.error || 'Please wait before claiming another reward.');
     }
   }, [user, currentRewardCoins, currentRewardType, onRewardCallback]);
 
