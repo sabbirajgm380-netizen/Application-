@@ -1,5 +1,5 @@
 
-import { dockerDb } from './docker-db';
+import { supabase } from './supabase';
 import {
   ADMOB_IDS,
   ANDROID_BANNER_ID,
@@ -32,6 +32,7 @@ export type RewardedAdResult = {
 /**
  * Securely records a completed rewarded ad session into Supabase 'rewarded_ads' table
  * and atomically credits verified coins and XP via secure RPC 'claim_rewarded_ad'.
+ * Uses real Supabase (not local Docker) so the 8-second rate limit is enforced server-side.
  */
 export async function recordRewardedAdToSupabase(
   userId: string,
@@ -47,8 +48,9 @@ export async function recordRewardedAdToSupabase(
       };
     }
 
-    // 1. Try secure RPC function 'claim_rewarded_ad' on Docker Postgres
-    const { data: rpcData, error: rpcError } = await dockerDb.rpc('claim_rewarded_ad', {
+    // 1. Try secure RPC function 'claim_rewarded_ad' on real Supabase
+    //    This enforces the 8-second rate limit and credits coins atomically server-side.
+    const { data: rpcData, error: rpcError } = await supabase.rpc('claim_rewarded_ad', {
       p_ad_unit_id: adUnitId,
       p_reward_type: rewardType,
       p_verification_token: `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -58,8 +60,18 @@ export async function recordRewardedAdToSupabase(
       return { success: true, data: rpcData };
     }
 
-    // 2. Resilient Direct Table Insert & Atomic Update Fallback on Docker Postgres
-    const { error: insertError } = await dockerDb.from('rewarded_ads').insert({
+    // If RPC rate-limited the user, surface the error (don't fallback and bypass the limit)
+    if (rpcError) {
+      const msg = rpcError.message || '';
+      if (msg.includes('wait') || msg.includes('rate') || msg.includes('spam')) {
+        return { success: false, error: msg };
+      }
+      console.warn('claim_rewarded_ad RPC error:', msg);
+    }
+
+    // 2. Fallback: Direct insert + profile update on real Supabase
+    //    Only reached if the RPC doesn't exist yet. Still goes to real DB (not Docker).
+    const { error: insertError } = await supabase.from('rewarded_ads').insert({
       user_id: userId,
       ad_unit_id: adUnitId,
       reward_type: rewardType,
@@ -68,10 +80,11 @@ export async function recordRewardedAdToSupabase(
     });
 
     if (insertError) {
-      console.warn('Docker rewarded_ads insert note:', insertError.message);
+      console.warn('rewarded_ads insert error:', insertError.message);
+      return { success: false, error: insertError.message };
     }
 
-    const { data: profile } = await dockerDb
+    const { data: profile } = await supabase
       .from('profiles')
       .select('coins, xp, level')
       .eq('id', userId)
@@ -82,7 +95,7 @@ export async function recordRewardedAdToSupabase(
       const newXP = (profile.xp || 0) + ADMOB_REWARDS.rewardedAdXP;
       const newLevel = Math.floor(newXP / 300) + 1;
 
-      await dockerDb
+      await supabase
         .from('profiles')
         .update({
           coins: newCoins,
