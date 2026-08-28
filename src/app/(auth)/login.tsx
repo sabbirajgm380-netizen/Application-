@@ -1,27 +1,28 @@
-import { useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
-import {
-  StyleSheet,
-  TextInput,
-  View,
-  Pressable,
-  Text,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  ScrollView,
-  Image,
-} from 'react-native';
 import { PrimaryGradient } from '@/components/PrimaryGradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLanguage, useTranslation } from '@/hooks/use-language';
 import { useTheme } from '@/hooks/use-theme';
-import { useTranslation, useLanguage } from '@/hooks/use-language';
-import { AlertCircle, Eye, EyeOff, Globe } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { AlertCircle, Eye, EyeOff, Globe } from 'lucide-react-native';
+import { useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { redirect } = useLocalSearchParams<{ redirect?: string }>();
   const insets = useSafeAreaInsets();
   const themeColors = useTheme();
   const { t, isRTL } = useTranslation();
@@ -49,7 +50,7 @@ export default function LoginScreen() {
     if (error) {
       setErrorMessage(error);
     } else {
-      router.replace('/(tabs)');
+      router.replace(redirect === '/adminpanel' ? '/adminpanel' : '/(tabs)');
     }
   };
 

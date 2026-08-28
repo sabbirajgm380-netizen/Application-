@@ -1,5 +1,5 @@
-import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/hooks/useAuth';
 import { MediaCategory } from '@/hooks/useFavorites';
 import { useResponsive } from '@/hooks/useResponsive';
 import { addAnime } from '@/lib/admin-operations';
@@ -7,17 +7,17 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, Lock, Sparkles } from 'lucide-react-native';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 
 const CATEGORY_OPTIONS: { id: MediaCategory; label: string; icon: string }[] = [
@@ -31,10 +31,11 @@ const CATEGORY_OPTIONS: { id: MediaCategory; label: string; icon: string }[] = [
 export default function AddAnimeScreen() {
   const router = useRouter();
   const themeColors = useTheme();
-  const { user, profile } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { maxContentWidth } = useResponsive();
 
-  const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'esra99san@gmail.com';
+  const ownerEmail = (process.env.EXPO_PUBLIC_ADMIN_EMAIL || 'esra99san@gmail.com').toLowerCase();
+  const isAdmin = user?.email?.toLowerCase() === ownerEmail;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -54,7 +55,7 @@ export default function AddAnimeScreen() {
     setLinkError('');
     const cleanNumStr = newEpNum.replace(/\D/g, '');
     const num = parseInt(cleanNumStr, 10);
-    
+
     if (!cleanNumStr || isNaN(num) || num <= 0) {
       setLinkError('Please enter a valid episode number (e.g. 1).');
       return;
@@ -63,7 +64,7 @@ export default function AddAnimeScreen() {
       setLinkError('Please enter a valid video URL.');
       return;
     }
-    
+
     setEpisodeLinks(prev => {
       const next = [...prev];
       const existingIdx = next.findIndex(l => l.episode === num);
@@ -121,11 +122,11 @@ export default function AddAnimeScreen() {
 
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       window.alert(`"${title}" (${category}) has been published to AniFlix! 🎉`);
-      router.replace('/admin');
+      router.replace('/adminpanel');
     } else {
       Alert.alert('Success! 🎉', `"${title}" (${category}) has been published to AniFlix.`, [
         { text: 'Add Another', onPress: () => resetForm() },
-        { text: 'Back to Panel', onPress: () => (router.canGoBack() ? router.back() : router.replace('/admin')) },
+        { text: 'Back to Panel', onPress: () => (router.canGoBack() ? router.back() : router.replace('/adminpanel')) },
       ]);
     }
   };
@@ -143,7 +144,7 @@ export default function AddAnimeScreen() {
 
   const inputStyle = [styles.input, { backgroundColor: themeColors.backgroundElement, color: themeColors.text }];
 
-  if (!isAdmin) {
+  if (authLoading || !isAdmin) {
     return (
       <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         <View style={[styles.contentWrapper, { maxWidth: 600, justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
@@ -158,7 +159,7 @@ export default function AddAnimeScreen() {
           </Text>
           <Pressable
             style={{ backgroundColor: themeColors.primary, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 10 }}
-            onPress={() => router.push('/(auth)/login' as any)}
+            onPress={() => router.push({ pathname: '/(auth)/login', params: { redirect: '/adminpanel' } } as any)}
           >
             <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>Log In as Administrator</Text>
           </Pressable>
@@ -175,7 +176,7 @@ export default function AddAnimeScreen() {
       <View style={[styles.contentWrapper, { maxWidth: Math.min(maxContentWidth, 800) }]}>
         {/* Custom Header */}
         <View style={styles.headerBar}>
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/admin'))} style={[styles.backBtn, { backgroundColor: themeColors.backgroundElement }]}>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/adminpanel'))} style={[styles.backBtn, { backgroundColor: themeColors.backgroundElement }]}>
             <ArrowLeft color={themeColors.text} size={22} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: themeColors.text }]}>Add New Media</Text>
@@ -266,7 +267,7 @@ export default function AddAnimeScreen() {
           {/* Episode Link Manager */}
           <View style={[styles.fieldGroup, { backgroundColor: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#242436' }]}>
             <Text style={[styles.label, { color: themeColors.textSecondary }]}>ADD OR UPDATE EPISODE LINK</Text>
-            
+
             <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
               <View style={{ flex: 1 }}>
                 <TextInput
@@ -294,7 +295,7 @@ export default function AddAnimeScreen() {
             </View>
 
             {linkError ? <Text style={{ color: '#FF4D4D', fontSize: 12, marginBottom: 8, fontWeight: 'bold' }}>{linkError}</Text> : null}
-            
+
             <Pressable
               style={{ backgroundColor: themeColors.primary, paddingVertical: 10, borderRadius: 8, alignItems: 'center' }}
               onPress={handleAddLink}

@@ -1,24 +1,24 @@
-import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/hooks/useAuth';
 import { MediaCategory } from '@/hooks/useFavorites';
 import { useResponsive } from '@/hooks/useResponsive';
-import { updateAnime, getEditedMediaOverrides, getDeletedMediaIds } from '@/lib/admin-operations';
+import { getDeletedMediaIds, getEditedMediaOverrides, updateAnime } from '@/lib/admin-operations';
 import { supabase } from '@/lib/supabase';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Check, Lock, Sparkles, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, Lock, Sparkles } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 
 const CATEGORY_OPTIONS: { id: MediaCategory; label: string; icon: string }[] = [
@@ -33,10 +33,11 @@ export default function EditAnimeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const themeColors = useTheme();
-  const { user, profile } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { maxContentWidth } = useResponsive();
 
-  const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'esra99san@gmail.com';
+  const ownerEmail = (process.env.EXPO_PUBLIC_ADMIN_EMAIL || 'esra99san@gmail.com').toLowerCase();
+  const isAdmin = user?.email?.toLowerCase() === ownerEmail;
 
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [title, setTitle] = useState('');
@@ -162,10 +163,10 @@ export default function EditAnimeScreen() {
 
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       window.alert(`Changes to "${title}" have been saved and updated for all users! 🎉`);
-      router.replace('/admin');
+      router.replace('/adminpanel');
     } else {
       Alert.alert('Updated! 🎉', `"${title}" has been saved and updated for all users.`, [
-        { text: 'Back to Panel', onPress: () => router.replace('/admin') },
+        { text: 'Back to Panel', onPress: () => router.replace('/adminpanel') },
       ]);
     }
   };
@@ -178,7 +179,7 @@ export default function EditAnimeScreen() {
     );
   }
 
-  if (!isAdmin) {
+  if (authLoading || !isAdmin) {
     return (
       <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         <View style={{ maxWidth: 600, width: '100%', justifyContent: 'center', alignItems: 'center', padding: 24, alignSelf: 'center', flex: 1 }}>
@@ -193,7 +194,7 @@ export default function EditAnimeScreen() {
           </Text>
           <Pressable
             style={{ backgroundColor: themeColors.primary, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 10 }}
-            onPress={() => router.push('/(auth)/login' as any)}
+            onPress={() => router.push({ pathname: '/(auth)/login', params: { redirect: '/adminpanel' } } as any)}
           >
             <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>Log In as Administrator</Text>
           </Pressable>
@@ -217,7 +218,7 @@ export default function EditAnimeScreen() {
         {/* Header */}
         <View style={styles.headerRow}>
           <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/admin'))}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/adminpanel'))}
             style={[styles.backBtn, { backgroundColor: themeColors.backgroundElement }]}
           >
             <ArrowLeft color={themeColors.text} size={20} />

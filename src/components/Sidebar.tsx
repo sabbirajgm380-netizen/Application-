@@ -1,14 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, Animated, StyleSheet, Switch, Platform } from 'react-native';
-import { useRouter, usePathname, useLocalSearchParams } from 'expo-router';
-import { 
-  Home, LayoutGrid, Bookmark, User, ShieldAlert, Sparkles, X,
-  Film, Clapperboard, Tv, Zap, Flame, Swords, Heart, Compass, Star, Ghost, Smile, Gift, ChevronRight, Moon, Sun
-} from 'lucide-react-native';
-import { useTheme, useColorMode } from '@/hooks/use-theme';
-import { useResponsive } from '@/hooks/useResponsive';
-import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/use-language';
+import { useColorMode, useTheme } from '@/hooks/use-theme';
+import { useResponsive } from '@/hooks/useResponsive';
+import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
+import {
+    Bookmark,
+    Clapperboard,
+    Film,
+    Gift,
+    Home, LayoutGrid,
+    Moon,
+    Sparkles,
+    Sun,
+    Tv,
+    User,
+    X,
+    Zap
+} from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -23,10 +32,7 @@ export function Sidebar({ isOpen, onClose, onOpenRewards }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useLocalSearchParams();
-  const { user } = useAuth();
   const { t } = useTranslation();
-  
-  const isAdmin = user?.email?.toLowerCase() === 'esra99san@gmail.com';
 
   const [slideAnim] = useState(new Animated.Value(-300));
 
@@ -176,28 +182,7 @@ export function Sidebar({ isOpen, onClose, onOpenRewards }: SidebarProps) {
           );
         })}
 
-
-
-        {isAdmin && (
-          <View style={styles.adminSection}>
-            <View style={[styles.adminDivider, { backgroundColor: themeColors.border }]} />
-            <Text style={[styles.adminHeader, { color: themeColors.textSecondary }]}>{t('administration')}</Text>
-            <Pressable
-              onPress={() => {
-                router.push('/admin' as any);
-                if (!isDesktop) onClose();
-              }}
-              style={styles.navItem}
-            >
-              <ShieldAlert color="#0356C5" size={22} strokeWidth={2} />
-              <Text style={[styles.navItemText, { color: '#0356C5', fontWeight: '700' }]}>
-                {t('adminPanel')}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
-        <View style={[styles.adminDivider, { backgroundColor: themeColors.border, marginVertical: 12, marginTop: isAdmin ? 20 : 12 }]} />
+        <View style={[styles.adminDivider, { backgroundColor: themeColors.border, marginVertical: 12, marginTop: 12 }]} />
         <Pressable
           onPress={() => {
             router.push('/profile');

@@ -1,48 +1,41 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter, useFocusEffect } from 'expo-router';
-import {
-  StyleSheet,
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  Image,
-  ScrollView,
-  ActivityIndicator,
-  RefreshControl,
-  Animated,
-  Platform,
-} from 'react-native';
-import { useAuth } from '@/hooks/useAuth';
+import { AdMobBanner } from '@/components/AdMobBanner';
 import { PrimaryGradient } from '@/components/PrimaryGradient';
-import { useTheme } from '@/hooks/use-theme';
-import { useTranslation, useLanguage } from '@/hooks/use-language';
-import {
-  Play,
-  Heart,
-  Star,
-  Sparkles,
-  TrendingUp,
-  Compass,
-  ChevronLeft,
-  ChevronRight,
-  Film,
-  Clapperboard,
-  Tv,
-  Flame,
-  Globe,
-  Crown,
-  Menu,
-} from 'lucide-react-native';
-import { getDeletedMediaIds, getEditedMediaOverrides } from '@/lib/admin-operations';
-import { supabase } from '@/lib/supabase';
-import { useFavorites, AnimeItem, MediaCategory } from '@/hooks/useFavorites';
-import { useGamification } from '@/hooks/useGamification';
 import { RewardsHubModal } from '@/components/RewardsHubModal';
 import { VipSubscriptionModal } from '@/components/VipSubscriptionModal';
-import { AdMobBanner } from '@/components/AdMobBanner';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLanguage } from '@/hooks/use-language';
+import { useTheme } from '@/hooks/use-theme';
+import { AnimeItem, MediaCategory, useFavorites } from '@/hooks/useFavorites';
+import { useGamification } from '@/hooks/useGamification';
 import { useResponsive } from '@/hooks/useResponsive';
+import { getDeletedMediaIds, getEditedMediaOverrides } from '@/lib/admin-operations';
+import { supabase } from '@/lib/supabase';
+import { useFocusEffect, useRouter } from 'expo-router';
+import {
+    ChevronLeft,
+    ChevronRight,
+    Crown,
+    Film,
+    Flame,
+    Heart,
+    Menu,
+    Play,
+    Sparkles,
+    Star
+} from 'lucide-react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Animated,
+    Image,
+    Platform,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSidebar } from './_layout';
 
 export const CATEGORIES: { id: 'All' | MediaCategory; label: string; icon: string }[] = [
@@ -599,19 +592,9 @@ export default function HomeScreen() {
                 <Text style={{ color: themeColors.text, fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 6 }}>
                   {t('noMediaTitle', 'No Products Published Yet')}
                 </Text>
-                <Text style={{ color: themeColors.textSecondary, fontSize: 13, textAlign: 'center', maxWidth: 320, lineHeight: 18, marginBottom: 18 }}>
-                  {t('noMediaSub', 'Your cinema catalog is clean and ready. Add and publish your real anime, movies, and series from the Admin Control Center!')}
+                  <Text style={{ color: themeColors.textSecondary, fontSize: 13, textAlign: 'center', maxWidth: 320, lineHeight: 18 }}>
+                  {t('noMediaSub', 'Your cinema catalog is clean and ready. Check back soon for new anime, movies, and series.')}
                 </Text>
-                <Pressable
-                  style={{ backgroundColor: themeColors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6, overflow: 'hidden' }}
-                  onPress={() => router.push('/admin' as any)}
-                >
-                  <PrimaryGradient borderRadius={10} />
-                  <Sparkles size={16} color="#FFF" />
-                  <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>
-                    {t('adminDashboard' as any, 'Admin Dashboard')}
-                  </Text>
-                </Pressable>
               </View>
             )}
           </>

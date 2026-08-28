@@ -1,31 +1,28 @@
 import { useTheme } from '@/hooks/use-theme';
-import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth } from '@/hooks/useAuth';
+import { useResponsive } from '@/hooks/useResponsive';
 import { deleteAnime, updateAnimeFeatured } from '@/lib/admin-operations';
-import { supabase } from '@/lib/supabase';
 import { dockerDb } from '@/lib/docker-db';
 import {
-  getPendingManualPayments,
   approveManualPayment,
+  getPendingManualPayments,
   rejectManualPayment,
 } from '@/lib/rasedi-payment';
-import { router, useRouter, useFocusEffect } from 'expo-router';
+import { supabase } from '@/lib/supabase';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   ArrowLeft,
+  CheckCircle2,
+  Crown,
+  Film,
   Lock,
   Pencil,
   Plus,
   Star,
   Trash2,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Smartphone,
-  ShieldAlert,
-  Film,
-  Crown,
+  XCircle
 } from 'lucide-react-native';
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -51,10 +48,11 @@ type Anime = {
 export default function AdminPanelScreen() {
   const router = useRouter();
   const themeColors = useTheme();
-  const { user, profile } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { maxContentWidth } = useResponsive();
 
-  const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'esra99san@gmail.com';
+  const ownerEmail = (process.env.EXPO_PUBLIC_ADMIN_EMAIL || 'esra99san@gmail.com').toLowerCase();
+  const isOwner = user?.email?.toLowerCase() === ownerEmail;
 
   const [activeTab, setActiveTab] = useState<'media' | 'payments'>('media');
   const [animeList, setAnimeList] = useState<Anime[]>([]);
@@ -214,8 +212,9 @@ export default function AdminPanelScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (authLoading || !isOwner) return;
       fetchAnime();
-    }, [])
+    }, [authLoading, isOwner])
   );
 
   const handleRefresh = () => {
@@ -358,7 +357,7 @@ export default function AdminPanelScreen() {
     </View>
   );
 
-  if (loading) {
+  if (authLoading || (isOwner && loading)) {
     return (
       <View style={[styles.center, { backgroundColor: themeColors.background }]}>
         <ActivityIndicator size="large" color={themeColors.primary} />
@@ -367,7 +366,7 @@ export default function AdminPanelScreen() {
   }
 
   // Strict Admin Gate: Only admin@aniflix.com or role=admin
-  if (!isAdmin) {
+  if (!isOwner) {
     return (
       <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         <View style={[styles.contentWrapper, { maxWidth: 600, justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
@@ -382,7 +381,7 @@ export default function AdminPanelScreen() {
           </Text>
           <Pressable
             style={{ backgroundColor: themeColors.primary, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 10 }}
-            onPress={() => router.push('/(auth)/login' as any)}
+            onPress={() => router.push({ pathname: '/(auth)/login', params: { redirect: '/adminpanel' } } as any)}
           >
             <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>Log In as Administrator</Text>
           </Pressable>

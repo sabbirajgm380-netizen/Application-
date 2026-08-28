@@ -1,18 +1,18 @@
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { AdMobRewardedModal } from '@/components/AdMobRewardedModal';
+import { AniFlixSplashScreen } from '@/components/AniFlixSplashScreen';
+import { AppThemeProvider, useColorMode, useTheme } from '@/hooks/use-theme';
+import { AdMobProvider } from '@/hooks/useAdMob';
+import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { FavoritesProvider } from '@/hooks/useFavorites';
+import { GamificationProvider } from '@/hooks/useGamification';
+import { ReviewsProvider } from '@/hooks/useReviews';
+import { SocialProvider } from '@/hooks/useSocial';
+import { Stack, useLocalSearchParams, usePathname, useRouter, useSegments } from 'expo-router';
+import * as ScreenCapture from 'expo-screen-capture';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
-import * as ScreenCapture from 'expo-screen-capture';
-import { AuthProvider, useAuth } from '@/hooks/useAuth';
-import { FavoritesProvider } from '@/hooks/useFavorites';
-import { ReviewsProvider } from '@/hooks/useReviews';
-import { GamificationProvider } from '@/hooks/useGamification';
-import { AppThemeProvider, useTheme, useColorMode } from '@/hooks/use-theme';
-import { AdMobProvider } from '@/hooks/useAdMob';
-import { SocialProvider } from '@/hooks/useSocial';
-import { AniFlixSplashScreen } from '@/components/AniFlixSplashScreen';
-import { AdMobRewardedModal } from '@/components/AdMobRewardedModal';
 
 import { LanguageProvider } from '@/hooks/use-language';
 
@@ -43,6 +43,8 @@ function PrivacyProtection() {
 function AuthGuard() {
   const { session, isLoading } = useAuth();
   const segments = useSegments();
+  const pathname = usePathname();
+  const { redirect } = useLocalSearchParams<{ redirect?: string }>();
   const router = useRouter();
 
   useEffect(() => {
@@ -57,11 +59,11 @@ function AuthGuard() {
     const isPasswordRecovery = String(segments[0]) === 'reset-password';
 
     if (!session && !inAuthGroup && !isPasswordRecovery) {
-      router.replace('/(auth)/login');
-    } else if (session && inAuthGroup) {
+      router.replace({ pathname: '/(auth)/login', params: { redirect: pathname } });
+    } else if (session && inAuthGroup && redirect !== '/adminpanel') {
       router.replace('/(tabs)');
     }
-  }, [session, isLoading, segments, router]);
+  }, [session, isLoading, segments, pathname, redirect, router]);
 
   return null;
 }
@@ -93,6 +95,7 @@ function RootNavigation({
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="admin" options={{ headerShown: false }} />
+        <Stack.Screen name="adminpanel" options={{ headerShown: false }} />
         <Stack.Screen name="watch" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         <Stack.Screen name="reset-password" options={{ headerShown: false }} />
         <Stack.Screen name="verified" options={{ headerShown: false }} />

@@ -5,15 +5,17 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function AdminLayout() {
   const themeColors = useTheme();
-  const { profile, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
+  const ownerEmail = (process.env.EXPO_PUBLIC_ADMIN_EMAIL || 'esra99san@gmail.com').toLowerCase();
 
   useEffect(() => {
-    if (!isLoading && profile?.role !== 'admin') {
+    const isOwner = user?.email?.toLowerCase() === ownerEmail;
+    if (!isLoading && !isOwner) {
       // Non-admin users get redirected away
       router.replace('/(tabs)');
     }
-  }, [profile, isLoading, router]);
+  }, [user, isLoading, ownerEmail, router]);
 
   return (
     <Stack

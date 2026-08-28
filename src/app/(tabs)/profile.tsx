@@ -1,53 +1,42 @@
-import { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  Pressable,
-  ActivityIndicator,
-  ScrollView,
-  Image,
-  Modal,
-  TextInput,
-  Alert,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useTheme, useColorMode } from '@/hooks/use-theme';
-import { useLanguage } from '@/hooks/use-language';
-import {
-  LogOut,
-  User as UserIcon,
-  Shield,
-  Heart,
-  Sparkles,
-  Tv,
-  ChevronRight,
-  Flame,
-  Crown,
-  Trophy,
-  Palette,
-  Award,
-  Users,
-  PlayCircle,
-  Camera,
-  Check,
-  X,
-  Sun,
-  Moon,
-  Globe,
-  CreditCard,
-  ShieldAlert,
-  Disc3,
-} from 'lucide-react-native';
-import { useAuth } from '@/hooks/useAuth';
-import { useFavorites } from '@/hooks/useFavorites';
-import { useResponsive } from '@/hooks/useResponsive';
-import { useGamification } from '@/hooks/useGamification';
-import { useSocial } from '@/hooks/useSocial';
-import { useAdMob } from '@/hooks/useAdMob';
 import { RewardsHubModal } from '@/components/RewardsHubModal';
 import { VipSubscriptionModal } from '@/components/VipSubscriptionModal';
+import { useLanguage } from '@/hooks/use-language';
+import { useColorMode, useTheme } from '@/hooks/use-theme';
+import { useAdMob } from '@/hooks/useAdMob';
+import { useAuth } from '@/hooks/useAuth';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useGamification } from '@/hooks/useGamification';
+import { useResponsive } from '@/hooks/useResponsive';
+import { useSocial } from '@/hooks/useSocial';
+import { useRouter } from 'expo-router';
+import {
+    Camera,
+    Check,
+    ChevronRight,
+    CreditCard,
+    Crown,
+    Disc3,
+    Globe,
+    LogOut,
+    Trophy,
+    Tv,
+    User as UserIcon,
+    X
+} from 'lucide-react-native';
+import { useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PRESET_AVATARS = [
   { id: '1', name: 'Original Hero', url: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=300&q=80' },
@@ -94,10 +83,6 @@ export default function ProfileScreen() {
     await signOut();
   };
 
-  const handleAdminPanel = () => {
-    router.push('/admin' as any);
-  };
-
   const handleSelectAvatar = async (url: string) => {
     if (!url.trim()) return;
     setIsUpdatingAvatar(true);
@@ -128,7 +113,6 @@ export default function ProfileScreen() {
     );
   }
 
-  const isAdmin = profile?.role === 'admin';
   const levelXPProgress = xp - currentLevelBaseXP;
   const levelXPTarget = nextLevelXP - currentLevelBaseXP;
   const xpPercent = Math.min(100, Math.max(0, (levelXPProgress / levelXPTarget) * 100));
@@ -146,7 +130,7 @@ export default function ProfileScreen() {
             onPress={() => setShowAvatarModal(true)}
             style={[
               styles.avatarGlow,
-              { borderColor: isAdmin ? primaryColor : '#242436' },
+              { borderColor: '#242436' },
             ]}
           >
             <View style={[styles.avatar, { backgroundColor: themeColors.backgroundCard }]}>
@@ -157,7 +141,7 @@ export default function ProfileScreen() {
                   resizeMode="cover"
                 />
               ) : (
-                <UserIcon color={isAdmin ? primaryColor : '#fff'} size={44} />
+                <UserIcon color="#fff" size={44} />
               )}
             </View>
             <View style={[styles.avatarEditBadge, { backgroundColor: primaryColor }]}>
@@ -175,17 +159,13 @@ export default function ProfileScreen() {
           <Pressable
             style={[
               styles.roleBadge,
-              { backgroundColor: isAdmin ? primaryColor : themeColors.backgroundCard },
+              { backgroundColor: themeColors.backgroundCard },
             ]}
-            onPress={() => (isAdmin ? handleAdminPanel() : setShowVipModal(true))}
+            onPress={() => setShowVipModal(true)}
           >
-            {isAdmin ? (
-              <Sparkles color="#fff" size={14} />
-            ) : (
-              <Tv color={themeColors.accentCyan} size={14} />
-            )}
+            <Tv color={themeColors.accentCyan} size={14} />
             <Text style={styles.roleText}>
-              {isAdmin ? t('platformAdmin') : isVIP ? `${t('vipMember')} (${vipDaysRemaining}d)` : t('standardStreamerGetVip')}
+              {isVIP ? `${t('vipMember')} (${vipDaysRemaining}d)` : t('standardStreamerGetVip')}
             </Text>
           </Pressable>
         </View>
@@ -286,23 +266,6 @@ export default function ProfileScreen() {
 
         {/* ⚙️ Actions List */}
         <View style={styles.actionsSection}>
-          {/* Admin Panel Button (Admin only) */}
-          {isAdmin && (
-            <Pressable 
-              style={[styles.menuItem, { backgroundColor: themeColors.primary, borderColor: themeColors.accentCyan }]}
-              onPress={handleAdminPanel}
-            >
-              <ChevronRight color="rgba(255,255,255,0.7)" size={20} />
-              <View style={styles.menuItemContent}>
-                <Text style={[styles.menuItemTitle, { color: '#fff' }]}>{t('adminCenter')}</Text>
-                <Text style={[styles.menuItemSub, { color: 'rgba(255,255,255,0.8)' }]}>{t('adminCenterSub')}</Text>
-              </View>
-              <View style={[styles.menuIconBox, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]}>
-                <ShieldAlert color="#fff" size={20} />
-              </View>
-            </Pressable>
-          )}
-
           {/* Dedicated FIB Payment Screen Link */}
           {!isVIP && (
             <Pressable 
