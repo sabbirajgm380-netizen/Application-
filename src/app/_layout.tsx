@@ -40,7 +40,7 @@ function PrivacyProtection() {
   return null;
 }
 
-function AuthGuard({ onReady }: { onReady: () => void }) {
+function AuthGuard() {
   const { session, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
@@ -48,7 +48,6 @@ function AuthGuard({ onReady }: { onReady: () => void }) {
   useEffect(() => {
     // Hide native splash screen as our animated splash takes over
     SplashScreen.hideAsync().catch(() => {});
-    onReady();
   }, []);
 
   useEffect(() => {
@@ -79,7 +78,7 @@ function RootNavigation({
 
   return (
     <View style={{ flex: 1, backgroundColor: themeColors.background }}>
-      <AuthGuard onReady={() => {}} />
+      <AuthGuard />
       <PrivacyProtection />
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack

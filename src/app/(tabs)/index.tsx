@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import {
   StyleSheet,
@@ -94,6 +94,7 @@ export default function HomeScreen() {
   const [fadeAnim] = useState(new Animated.Value(1));
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedMediaRef = useRef(false);
 
   const getCategoryLabel = (id: string, defaultLabel: string) => {
     if (id === 'All') return t('catAll', defaultLabel);
@@ -148,6 +149,7 @@ export default function HomeScreen() {
       setAllMedia(combined);
     } catch (err) {
       console.warn('Error fetching media:', err);
+      hasLoadedMediaRef.current = false;
       setAllMedia(DEFAULT_CATALOG);
     } finally {
       setLoading(false);
@@ -157,6 +159,8 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (hasLoadedMediaRef.current) return;
+      hasLoadedMediaRef.current = true;
       fetchMedia();
     }, [])
   );

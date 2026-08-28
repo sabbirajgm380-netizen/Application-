@@ -55,6 +55,7 @@ export default function WatchScreen() {
   const { awardWatchTimeReward } = useGamification();
   const { maxContentWidth, railCardWidth, railCardHeight, isDesktop, isTablet } = useResponsive();
   const { language } = useLanguage();
+  const awardWatchTimeRewardRef = useRef(awardWatchTimeReward);
 
   const [anime, setAnime] = useState<AnimeItem | null>(null);
   const [recommendations, setRecommendations] = useState<AnimeItem[]>([]);
@@ -68,11 +69,15 @@ export default function WatchScreen() {
   const [earnedNotification, setEarnedNotification] = useState<string | null>(null);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
 
+  useEffect(() => {
+    awardWatchTimeRewardRef.current = awardWatchTimeReward;
+  }, [awardWatchTimeReward]);
+
   // 🍿 Watch-to-Earn: Award Coins & XP during active playback
   useEffect(() => {
     if (!isPlaying) return;
     const interval = setInterval(() => {
-      const reward = awardWatchTimeReward(1);
+      const reward = awardWatchTimeRewardRef.current(1);
       setEarnedNotification(`🍿 Watching AniFlix: +${reward.coins} Coins & +${reward.xp} XP!`);
       setTimeout(() => setEarnedNotification(null), 4000);
     }, 45000);
