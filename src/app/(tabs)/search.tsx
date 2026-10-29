@@ -89,40 +89,61 @@ export default function SearchScreen() {
 
         combined = [...newLocalItems, ...customItems, ...defaultItems];
 
-        // Demo preview only (fork): when Supabase returns nothing, fill Search from the same two free public APIs as Home (no key needed). No UI or design code is changed.
-        if (combined.length === 0) {
+// Demo preview only (fork): when Supabase returns nothing, fill from free public APIs (no key needed). Each API is fetched independently so one failing API does not empty the others.
+      if (combined.length === 0) {
+        const fetchJson = async (url) => {
           try {
-            const [ghibliRes, tvRes] = await Promise.all([
-              fetch('https://ghibliapi.vercel.app/films').then((r) => (r.ok ? r.json() : [])),
-              fetch('https://api.tvmaze.com/shows?page=0').then((r) => (r.ok ? r.json() : [])),
-            ]);
-            const ghibliItems = (Array.isArray(ghibliRes) ? ghibliRes : []).slice(0, 22).map((f, i) => ({
-              id: `ghibli-${f.id || i}`,
-              title: f.title,
-              description: f.description || null,
-              image_url: f.image || null,
-              episodes: 1,
-              genre: 'Fantasy',
-              category: 'Anime Movies',
-              is_featured: i < 4,
-              published_at: f.release_date ? `${f.release_date}-01-01` : null,
-            }));
-            const tvItems = (Array.isArray(tvRes) ? tvRes : []).slice(0, 12).map((s) => ({
-              id: `tvmaze-${s.id}`,
-              title: s.name,
-              description: s.summary ? s.summary.replace(/<[^>]*>/g, '') : null,
-              image_url: s.image?.original || s.image?.medium || null,
-              episodes: 1,
-              genre: s.genres?.[0] || 'Drama',
-              category: 'Drama',
-              is_featured: false,
-              published_at: s.premiered || null,
-            }));
-            combined = [...ghibliItems, ...tvItems];
-          } catch (e) {
-            console.warn('Demo API fallback failed:', e);
+            const r = await fetch(url);
+            return r.ok ? await r.json() : [];
+          } catch {
+            return [];
           }
-        }
+        };
+        const [ghibliRes, kitsuRes1, kitsuRes2, tvRes] = await Promise.all([
+          fetchJson('https://ghibliapi.vercel.app/films'),
+          fetchJson('https://kitsu.io/api/edge/anime?page[limit]=20&sort=-averageRating'),
+          fetchJson('https://kitsu.io/api/edge/anime?page[limit]=20&page[offset]=20&sort=-averageRating'),
+          fetchJson('https://api.tvmaze.com/shows?page=0'),
+        ]);
+        const ghibliItems = (Array.isArray(ghibliRes) ? ghibliRes : []).slice(0, 22).map((f, i) => ({
+          id: `ghibli-${f.id || i}`,
+          title: f.title,
+          description: f.description || null,
+          image_url: f.image || null,
+          episodes: 1,
+          genre: 'Fantasy',
+          category: 'Anime Movies',
+          is_featured: i < 4,
+          published_at: f.release_date ? `${f.release_date}-01-01` : null,
+        }));
+        const kitsuList = [...(kitsuRes1?.data || []), ...(kitsuRes2?.data || [])];
+        const kitsuItems = kitsuList.map((k) => {
+          const a = k.attributes || {};
+          return {
+            id: `kitsu-${k.id}`,
+            title: (a.titles && a.titles.en) || a.canonicalTitle || 'Untitled',
+            description: a.synopsis || null,
+            image_url: (a.posterImage && (a.posterImage.large || a.posterImage.original)) || null,
+            episodes: a.episodeCount || 1,
+            genre: 'Anime',
+            category: a.subtype === 'movie' ? 'Anime Movies' : 'Anime Series',
+            is_featured: false,
+            published_at: a.startDate || null,
+          };
+        });
+        const tvItems = (Array.isArray(tvRes) ? tvRes : []).slice(0, 40).map((s) => ({
+          id: `tvmaze-${s.id}`,
+          title: s.name,
+          description: s.summary ? s.summary.replace(/<[^>]*>/g, '') : null,
+          image_url: s.image?.original || s.image?.medium || null,
+          episodes: 1,
+          genre: s.genres?.[0] || 'Drama',
+          category: 'Drama',
+          is_featured: false,
+          published_at: s.premiered || null,
+        }));
+        combined = [...ghibliItems, ...kitsuItems, ...tvItems];
+      }
         setMediaList(combined);
       } catch (err) {
         console.warn('Error loading search data:', err);
@@ -196,7 +217,7 @@ export default function SearchScreen() {
         </Pressable>
 
         <View style={styles.cardInfo}>
-          <Text style={[styles.cardTitle, { color: themeColors.text }]} numberOfLines={1}>
+          <Text style={[styles.cardTitle, { color: themeColors.text }]} numberOfLines={isDesktop ? 1 : 2}>
             {language === 'ku' && item.title_ku ? item.title_ku : item.title}
           </Text>
           <Text style={[styles.cardGenre, { color: themeColors.textSecondary }]} numberOfLines={1}>
