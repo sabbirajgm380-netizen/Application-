@@ -15,5 +15,6 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={session ? '/(tabs)' : '/(auth)/login'} />;
+  // Demo preview only (fork): always go to the main tabs so the design can be previewed without a backend account.
+  return <Redirect href="/(tabs)" />;
 }
