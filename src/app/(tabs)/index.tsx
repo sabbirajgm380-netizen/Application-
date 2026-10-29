@@ -139,6 +139,41 @@ export default function HomeScreen() {
 
       combined = [...newLocalItems, ...customItems, ...defaultItems];
 
+      // Demo preview only (fork): when Supabase returns nothing, fill the Home screen from two free public APIs (no key needed) so the real look can be seen. No UI or design code is changed.
+      if (combined.length === 0) {
+        try {
+          const [ghibliRes, tvRes] = await Promise.all([
+            fetch('https://ghibliapi.vercel.app/films').then((r) => (r.ok ? r.json() : [])),
+            fetch('https://api.tvmaze.com/shows?page=0').then((r) => (r.ok ? r.json() : [])),
+          ]);
+          const ghibliItems = (Array.isArray(ghibliRes) ? ghibliRes : []).slice(0, 22).map((f, i) => ({
+            id: `ghibli-${f.id || i}`,
+            title: f.title,
+            description: f.description || null,
+            image_url: f.image || null,
+            episodes: 1,
+            genre: 'Fantasy',
+            category: 'Anime Movies',
+            is_featured: i < 4,
+            published_at: f.release_date ? `${f.release_date}-01-01` : null,
+          }));
+          const tvItems = (Array.isArray(tvRes) ? tvRes : []).slice(0, 12).map((s) => ({
+            id: `tvmaze-${s.id}`,
+            title: s.name,
+            description: s.summary ? s.summary.replace(/<[^>]*>/g, '') : null,
+            image_url: s.image?.original || s.image?.medium || null,
+            episodes: 1,
+            genre: s.genres?.[0] || 'Drama',
+            category: 'Drama',
+            is_featured: false,
+            published_at: s.premiered || null,
+          }));
+          combined = [...ghibliItems, ...tvItems];
+        } catch (e) {
+          console.warn('Demo API fallback failed:', e);
+        }
+      }
+
       setAllMedia(combined);
     } catch (err) {
       console.warn('Error fetching media:', err);
