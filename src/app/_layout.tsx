@@ -58,8 +58,11 @@ function AuthGuard() {
     const inAuthGroup = segments[0] === '(auth)';
     const isPasswordRecovery = String(segments[0]) === 'reset-password';
 
-    // Demo preview only (fork): skip the login redirect so the design can be previewed without a backend account. No UI or design code is changed.
-    return;
+    if (!session && !inAuthGroup && !isPasswordRecovery) {
+      router.replace({ pathname: '/(auth)/login', params: { redirect: pathname } });
+    } else if (session && inAuthGroup && redirect !== '/adminpanel') {
+      router.replace('/(tabs)');
+    }
   }, [session, isLoading, segments, pathname, redirect, router]);
 
   return null;
