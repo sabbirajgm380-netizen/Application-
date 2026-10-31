@@ -1,6 +1,7 @@
 import { useTranslation } from '@/hooks/use-language';
 import { useColorMode, useTheme } from '@/hooks/use-theme';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useAuth } from '@/hooks/useAuth';
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import {
     Bookmark,
@@ -9,6 +10,7 @@ import {
     Gift,
     Home, LayoutGrid,
     Moon,
+    Shield,
     Sparkles,
     Sun,
     Tv,
@@ -33,6 +35,9 @@ export function Sidebar({ isOpen, onClose, onOpenRewards }: SidebarProps) {
   const pathname = usePathname();
   const params = useLocalSearchParams();
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const ownerEmail = (process.env.EXPO_PUBLIC_ADMIN_EMAIL || 'esra99san@gmail.com').toLowerCase();
+  const isOwner = user?.email?.toLowerCase() === ownerEmail;
 
   const [slideAnim] = useState(new Animated.Value(-300));
 
@@ -61,7 +66,6 @@ export function Sidebar({ isOpen, onClose, onOpenRewards }: SidebarProps) {
     { label: t('catDrama'), icon: Tv, route: '/search', params: { category: 'Drama' } },
     { label: t('catAnimeSeries'), icon: Zap, route: '/search', params: { category: 'Anime Series' } },
   ];
-
 
   const sidebarWidth = 260;
 
@@ -93,8 +97,8 @@ export function Sidebar({ isOpen, onClose, onOpenRewards }: SidebarProps) {
         )}
       </View>
 
-      <Animated.ScrollView 
-        style={[styles.navLinks, { flex: 1 }]} 
+      <Animated.ScrollView
+        style={[styles.navLinks, { flex: 1 }]}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 60, gap: 8 }}
       >
@@ -133,7 +137,7 @@ export function Sidebar({ isOpen, onClose, onOpenRewards }: SidebarProps) {
         })}
 
         <View style={[styles.adminDivider, { backgroundColor: themeColors.border, marginVertical: 12 }]} />
-        
+
         <Pressable
           onPress={() => {
             if (onOpenRewards) onOpenRewards();
@@ -149,7 +153,7 @@ export function Sidebar({ isOpen, onClose, onOpenRewards }: SidebarProps) {
 
         <View style={[styles.adminDivider, { backgroundColor: themeColors.border, marginVertical: 12 }]} />
         <Text style={[styles.sectionHeader, { color: themeColors.textSecondary }]}>{t('categoriesTitle')}</Text>
-        
+
         {categories.map((item) => {
           const isActive = pathname === item.route && params.category === item.params.category;
           const Icon = item.icon;
@@ -199,6 +203,24 @@ export function Sidebar({ isOpen, onClose, onOpenRewards }: SidebarProps) {
           </Text>
         </Pressable>
 
+        {isOwner && (
+          <Pressable
+            onPress={() => {
+              router.push('/admin');
+              if (!isDesktop) onClose();
+            }}
+            style={[
+              styles.navItem,
+              pathname === '/admin' && [styles.navItemActive, { backgroundColor: themeColors.primary + '1A' }]
+            ]}
+          >
+            <Shield color={pathname === '/admin' ? themeColors.primary : themeColors.textSecondary} size={22} strokeWidth={pathname === '/admin' ? 2.5 : 2} />
+            <Text style={[styles.navItemText, { color: pathname === '/admin' ? themeColors.primary : themeColors.textSecondary }]}>
+              Admin Panel
+            </Text>
+          </Pressable>
+        )}
+
         <View style={[styles.adminDivider, { backgroundColor: themeColors.border, marginVertical: 12 }]} />
         <View style={[styles.navItem, { justifyContent: 'space-between', paddingVertical: 8 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -207,9 +229,9 @@ export function Sidebar({ isOpen, onClose, onOpenRewards }: SidebarProps) {
               {t('darkMode').split(' ')[0] + ' ' + t('darkMode').split(' ')[1]}
             </Text>
           </View>
-          <Switch 
-            value={isDark} 
-            onValueChange={toggleColorMode} 
+          <Switch
+            value={isDark}
+            onValueChange={toggleColorMode}
             trackColor={{ false: themeColors.backgroundElement, true: themeColors.primary }}
             thumbColor={'#fff'}
           />
