@@ -98,11 +98,11 @@ export default function SearchScreen() {
             return null;
           }
         };
-        const [ghibliRes, kitsuRes1, kitsuRes2, tvRes, anilistRes] = await Promise.all([
+        const [ghibliRes, kitsuRes1, kitsuRes2, tvRes, itunesRes1, itunesRes2, kdramaRes1, kdramaRes2, anilistRes] = await Promise.all([
           fetchJson('https://ghibliapi.vercel.app/films').catch(() => null),
           fetchJson('https://kitsu.io/api/edge/anime?page[limit]=20&sort=-averageRating').catch(() => null),
           fetchJson('https://kitsu.io/api/edge/anime?page[limit]=20&page[offset]=20&sort=-averageRating').catch(() => null),
-          fetchJson('https://api.tvmaze.com/shows?page=0').catch(() => null),
+          fetchJson('https://api.tvmaze.com/shows?page=0').catch(() => null), fetchJson('https://itunes.apple.com/search?term=action&media=movie&limit=20').catch(() => null), fetchJson('https://itunes.apple.com/search?term=drama&media=movie&limit=20').catch(() => null), fetchJson('https://api.tvmaze.com/search/shows?q=korean%20drama').catch(() => null), fetchJson('https://api.tvmaze.com/search/shows?q=korea').catch(() => null),
           fetchJson('https://graphql.anilist.co', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -159,7 +159,7 @@ export default function SearchScreen() {
           is_featured: false,
           published_at: s.premiered || null,
         }));
-        combined = [...ghibliItems, ...kitsuItems, ...anilistItems, ...tvItems];
+        const movieItems = (() => { const seen = new Set<number>(); const list = [...(itunesRes1?.results || []), ...(itunesRes2?.results || [])]; return list.filter((m: any) => m && m.trackId && !seen.has(m.trackId) && seen.add(m.trackId)).filter((m: any) => m.trackName).map((m: any) => ({ id: `itunes-${m.trackId}`, title: m.trackName, description: m.longDescription || m.shortDescription || null, image_url: m.artworkUrl100 ? m.artworkUrl100.replace('100x100bb.jpg', '600x600bb.jpg') : null, episodes: 1, genre: m.primaryGenreName || 'Movie', category: 'Movies', is_featured: false, published_at: m.releaseDate || null })); })(); const kdramaItems = (() => { const seen = new Set<number>(); const list = [...(Array.isArray(kdramaRes1) ? kdramaRes1 : []), ...(Array.isArray(kdramaRes2) ? kdramaRes2 : [])]; return list.filter((entry: any) => entry && entry.show && !seen.has(entry.show.id) && seen.add(entry.show.id)).map((entry: any) => entry.show).filter((s: any) => { const text = `${s.name || ''} ${s.summary || ''}`.toLowerCase(); return s.language === 'Korean' || text.includes('korean') || text.includes('korea') || text.includes('seoul'); }).map((s: any) => ({ id: `tvmaze-kdrama-${s.id}`, title: s.name, description: s.summary ? s.summary.replace(/<[^>]*>/g, '') : null, image_url: s.image?.original || s.image?.medium || null, episodes: 1, genre: s.genres?.[0] || 'Drama', category: 'K-Drama', is_featured: false, published_at: s.premiered || null })); })(); combined = [...ghibliItems, ...kitsuItems, ...anilistItems, ...tvItems, ...movieItems, ...kdramaItems];
       }
       setMediaList(combined);
       } catch (err) {
