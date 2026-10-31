@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { PrimaryGradient } from '@/components/PrimaryGradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -46,6 +47,15 @@ import { AdMobBanner } from '@/components/AdMobBanner';
 
 const SPEED_OPTIONS = [0.25, 0.5, 1.0, 1.25, 1.5, 2.0, 4.0];
 
+type VideoSource = {
+  episode: number;
+  server: string;
+  url_480?: string;
+  url_720?: string;
+  url_1080?: string;
+  download_url?: string;
+};
+
 export default function WatchScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
@@ -68,6 +78,8 @@ export default function WatchScreen() {
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [earnedNotification, setEarnedNotification] = useState<string | null>(null);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
+  const [selectedServer, setSelectedServer] = useState<string | null>(null);
+  const [selectedQuality, setSelectedQuality] = useState<'480p' | '720p' | '1080p'>('1080p');
 
   useEffect(() => {
     awardWatchTimeRewardRef.current = awardWatchTimeReward;
@@ -129,7 +141,7 @@ export default function WatchScreen() {
         if (isUuid) {
           const { data: supabaseData } = await supabase
             .from('anime')
-            .select('id, title, description, image_url, episodes, genre, category, is_featured, video_asset_key, video_url')
+            .select('id, title, description, image_url, episodes, genre, category, is_featured, video_asset_key, video_url, video_sources, download_url')
             .eq('id', id)
             .single();
           data = supabaseData;
@@ -190,9 +202,30 @@ export default function WatchScreen() {
     loadData();
   }, [id]);
 
+  // Server / quality selection for the current episode. Empty when the title has no video_sources.
+  const rawVideoSources: any[] = Array.isArray((anime as any)?.video_sources) ? (anime as any).video_sources : [];
+  const episodeVideoSources: VideoSource[] = rawVideoSources.filter((s: any) => Number(s.episode) === selectedEpisode);
+  const serverNames: string[] = Array.from(new Set(episodeVideoSources.map((s) => (s.server && String(s.server).trim() ? String(s.server).trim() : 'Server'))));
+  const effectiveServer: string | null = selectedServer && serverNames.includes(selectedServer) ? selectedServer : (serverNames[0] ?? null);
+  const chosenSource: VideoSource | undefined = effectiveServer ? episodeVideoSources.find((s) => (s.server && String(s.server).trim() ? String(s.server).trim() : 'Server') === effectiveServer) : undefined;
+  const qualityOptions: ('480p' | '720p' | '1080p')[] = (['480p', '720p', '1080p'] as const).filter((q) => {
+    const key = q === '480p' ? 'url_480' : q === '720p' ? 'url_720' : 'url_1080';
+    return Boolean(chosenSource?.[key]?.trim());
+  });
+  const effectiveQuality: '480p' | '720p' | '1080p' = qualityOptions.includes(selectedQuality) ? selectedQuality : (qualityOptions[qualityOptions.length - 1] ?? '1080p');
+  const chosenQualityUrl: string | undefined = chosenSource ? (effectiveQuality === '480p' ? chosenSource.url_480 : effectiveQuality === '720p' ? chosenSource.url_720 : chosenSource.url_1080)?.trim() : undefined;
+  const downloadUrl: string | undefined = chosenSource?.download_url?.trim() || (anime as any)?.download_url?.trim() || undefined;
+
   useEffect(() => {
     if (!anime?.id) return;
     let cancelled = false;
+
+    // Per-episode server + quality URL takes priority when present.
+    if (chosenQualityUrl && chosenQualityUrl.startsWith('http')) {
+      setVideoSource(chosenQualityUrl);
+      setPlaybackError(null);
+      return;
+    }
 
     // Check if anime already has a direct HTTP/HTTPS link (e.g. Cloudflare R2 or CDN URL)
     const specificEpisodeUrl = anime.episode_links?.find(e => e.episode === selectedEpisode)?.url?.trim();
@@ -236,7 +269,7 @@ export default function WatchScreen() {
       });
 
     return () => { cancelled = true; };
-  }, [anime?.id, anime?.video_url, anime?.video_asset_key, anime?.episode_links, selectedEpisode]);
+  }, [anime?.id, anime?.video_url, anime?.video_asset_key, anime?.episode_links, (anime as any)?.video_sources, (anime as any)?.download_url, selectedEpisode, chosenQualityUrl]);
 
   const favorited = anime ? isFavorite(anime.id) : false;
   const stats = anime ? getStatsForMedia(anime.id) : { average: 4.8, count: 14 };
@@ -470,6 +503,87 @@ export default function WatchScreen() {
                 );
               })}
             </View>
+          </View>
+        )}
+
+        {/* Server / Quality selector: only shown when this title has video_sources. */}
+        {(episodeVideoSources.length > 0 || downloadUrl) && (
+          <View style={[styles.speedMenu, { backgroundColor: themeColors.backgroundElement }]}>
+            {episodeVideoSources.length > 0 && (
+              <>
+                <Text style={[styles.speedMenuTitle, { color: themeColors.textSecondary }]}>
+                  SERVER
+                </Text>
+                <View style={styles.speedOptionsGrid}>
+                  {serverNames.map((name) => {
+                    const isCurrent = name === effectiveServer;
+                    return (
+                      <Pressable
+                        key={name}
+                        style={[
+                          styles.speedOptionChip,
+                          isCurrent
+                            ? [styles.speedOptionChipActive, { backgroundColor: themeColors.primary }]
+                            : { backgroundColor: themeColors.backgroundCard },
+                        ]}
+                        onPress={() => setSelectedServer(name)}
+                      >
+                        <Text style={[styles.speedOptionText, { color: isCurrent ? '#fff' : '#9A9AA8' }]}>
+                          {name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+            {qualityOptions.length > 0 && (
+              <>
+                <Text style={[styles.speedMenuTitle, { color: themeColors.textSecondary, marginTop: 12 }]}>
+                  QUALITY
+                </Text>
+                <View style={styles.speedOptionsGrid}>
+                  {qualityOptions.map((q) => {
+                    const isCurrent = q === effectiveQuality;
+                    return (
+                      <Pressable
+                        key={q}
+                        style={[
+                          styles.speedOptionChip,
+                          isCurrent
+                            ? [styles.speedOptionChipActive, { backgroundColor: themeColors.primary }]
+                            : { backgroundColor: themeColors.backgroundCard },
+                        ]}
+                        onPress={() => setSelectedQuality(q)}
+                      >
+                        <Text style={[styles.speedOptionText, { color: isCurrent ? '#fff' : '#9A9AA8' }]}>
+                          {q}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+            {downloadUrl && (
+              <View style={[styles.speedOptionsGrid, { marginTop: 12 }]}>
+                <Pressable
+                  style={[styles.speedOptionChip, { backgroundColor: themeColors.backgroundCard }]}
+                  onPress={() => {
+                    if (!downloadUrl) return;
+                    try {
+                      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                        window.open(downloadUrl, '_blank');
+                      } else {
+                        void Linking.openURL(downloadUrl);
+                      }
+                    } catch {}
+                  }}
+                >
+                  <Text style={[styles.speedOptionText, { color: themeColors.text }]}>Download</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         )}
 
