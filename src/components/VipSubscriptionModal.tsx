@@ -210,6 +210,12 @@ export function VipSubscriptionModal({ visible, onClose }: VipSubscriptionModalP
                         </Text>
                       </View>
                     )}
+                    {isSelected && (
+                      <View style={styles.selectedPlanBadge}>
+                        <Check size={12} color="#FFB800" />
+                        <Text style={styles.selectedPlanText}>Selected</Text>
+                      </View>
+                    )}
                     <Text style={styles.planDuration}>{getPlanDurationLabel(plan.id)}</Text>
                     <Text style={styles.planPrice}>
                       {plan.priceIQD.toLocaleString()}{' '}
@@ -241,6 +247,10 @@ export function VipSubscriptionModal({ visible, onClose }: VipSubscriptionModalP
                   {getPlanDurationLabel(selectedPlan.id)} — {selectedPlan.priceIQD.toLocaleString()} {isKu ? 'دینار' : 'IQD'}
                 </Text>
               </View>
+
+              <Text style={styles.chatPaymentNote}>
+                Payment is completed in chat and support will activate VIP.
+              </Text>
 
               {/* WhatsApp Button */}
               <Pressable style={styles.whatsappBtn} onPress={handleContactWhatsApp}>
@@ -274,30 +284,6 @@ export function VipSubscriptionModal({ visible, onClose }: VipSubscriptionModalP
                 <ExternalLink size={16} color="#0088CC" />
               </Pressable>
             </View>
-
-            {/*
-            ================================================================================
-            ARCHIVED MANUAL FIB TRANSACTION FORM (KEEP FOR FUTURE RESTORATION)
-            ================================================================================
-            <View style={styles.transferInfoBox}>
-              <Text style={styles.transferTitle}>{isKu ? activeMethod.nameKu : activeMethod.name}</Text>
-              <Text style={styles.transferInstructions}>
-                {isKu ? activeMethod.instructionsKu : activeMethod.instructions}
-              </Text>
-              <View style={styles.accountRow}>
-                <View>
-                  <Text style={styles.accountLabel}>{isKu ? 'ژمارەی ئەژمێری FIB:' : 'FIB Account / Phone Number:'}</Text>
-                  <Text style={styles.accountNumber}>{activeMethod.accountNumber}</Text>
-                  <Text style={styles.accountHolder}>{activeMethod.accountName}</Text>
-                </View>
-                <Pressable style={styles.copyBtn} onPress={handleCopyAccount}>
-                  <Copy size={16} color="#FFF" />
-                  <Text style={styles.copyBtnText}>{copied ? (isKu ? 'کۆپیکرا!' : 'Copied!') : isKu ? 'کۆپیکردن' : 'Copy'}</Text>
-                </Pressable>
-              </View>
-            </View>
-            ================================================================================
-            */}
 
             <View style={styles.securityFooter}>
               <ShieldCheck size={14} color="#8E8EA4" />
@@ -484,6 +470,24 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
   },
+  selectedPlanBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    backgroundColor: '#1E1A10',
+    borderWidth: 1,
+    borderColor: '#FFB800',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginBottom: 6,
+  },
+  selectedPlanText: {
+    color: '#FFB800',
+    fontSize: 10,
+    fontWeight: '800',
+  },
   planDuration: {
     color: '#FFF',
     fontSize: 13,
@@ -520,6 +524,7 @@ const styles = StyleSheet.create({
   },
   selectedPlanSummary: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#1A1810',
@@ -533,11 +538,20 @@ const styles = StyleSheet.create({
     color: '#8E8EA4',
     fontSize: 12,
     fontWeight: '600',
+    flexShrink: 1,
   },
   summaryValue: {
     color: '#FFB800',
     fontSize: 13,
     fontWeight: '800',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+  },
+  chatPaymentNote: {
+    color: '#FFD700',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
   },
   whatsappBtn: {
     flexDirection: 'row',
