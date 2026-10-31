@@ -28,6 +28,15 @@ const CATEGORY_OPTIONS: { id: MediaCategory; label: string; icon: string }[] = [
   { id: 'Anime Series', label: 'Anime Series', icon: '⚡' },
 ];
 
+type VideoSourceInput = {
+  episode: number;
+  server: string;
+  url_480: string;
+  url_720: string;
+  url_1080: string;
+  download_url: string;
+};
+
 export default function AddAnimeScreen() {
   const router = useRouter();
   const themeColors = useTheme();
@@ -47,9 +56,18 @@ export default function AddAnimeScreen() {
   const [isFeatured, setIsFeatured] = useState(false);
   const [loading, setLoading] = useState(false);
   const [linkError, setLinkError] = useState('');
+  const [downloadUrl, setDownloadUrl] = useState('');
+  const [videoSources, setVideoSources] = useState<VideoSourceInput[]>([]);
+  const [serverError, setServerError] = useState('');
 
   const [newEpNum, setNewEpNum] = useState('');
   const [newEpUrl, setNewEpUrl] = useState('');
+  const [newServerEp, setNewServerEp] = useState('');
+  const [newServerName, setNewServerName] = useState('');
+  const [newServer480, setNewServer480] = useState('');
+  const [newServer720, setNewServer720] = useState('');
+  const [newServer1080, setNewServer1080] = useState('');
+  const [newServerDownload, setNewServerDownload] = useState('');
 
   const handleAddLink = () => {
     setLinkError('');
@@ -83,6 +101,35 @@ export default function AddAnimeScreen() {
     setEpisodeLinks(prev => prev.filter(l => l.episode !== epToRemove));
   };
 
+  const handleAddServer = () => {
+    setServerError('');
+    const cleanNumStr = newServerEp.replace(/\D/g, '');
+    const num = parseInt(cleanNumStr, 10);
+    if (!cleanNumStr || isNaN(num) || num <= 0) {
+      setServerError('Please enter a valid episode number (e.g. 1).');
+      return;
+    }
+    if (!newServer480.trim() && !newServer720.trim() && !newServer1080.trim() && !newServerDownload.trim()) {
+      setServerError('Enter at least one URL for this server (480p, 720p, 1080p or Download).');
+      return;
+    }
+    setVideoSources(prev => [...prev, { episode: num, server: newServerName.trim(), url_480: newServer480.trim(), url_720: newServer720.trim(), url_1080: newServer1080.trim(), download_url: newServerDownload.trim() }].sort((a, b) => a.episode - b.episode));
+    setNewServerEp('');
+    setNewServerName('');
+    setNewServer480('');
+    setNewServer720('');
+    setNewServer1080('');
+    setNewServerDownload('');
+  };
+
+  const handleUpdateServer = (index: number, field: 'server' | 'url_480' | 'url_720' | 'url_1080' | 'download_url', value: string) => {
+    setVideoSources(prev => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
+  };
+
+  const handleRemoveServer = (index: number) => {
+    setVideoSources(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
     if (!title.trim()) {
       Alert.alert('Error', 'Title is required.');
@@ -95,6 +142,18 @@ export default function AddAnimeScreen() {
       return;
     }
 
+    const video_sources = videoSources
+      .filter(s => s.url_480.trim() || s.url_720.trim() || s.url_1080.trim() || s.download_url.trim())
+      .map(s => ({
+        episode: s.episode,
+        server: s.server.trim() || 'Server',
+        url_480: s.url_480.trim(),
+        url_720: s.url_720.trim(),
+        url_1080: s.url_1080.trim(),
+        download_url: s.download_url.trim(),
+      }))
+      .sort((a, b) => a.episode - b.episode);
+
     setLoading(true);
 
     const result = await addAnime({
@@ -106,7 +165,9 @@ export default function AddAnimeScreen() {
       genre: genre.trim() || undefined,
       category: category,
       is_featured: isFeatured,
-    });
+      video_sources,
+      download_url: downloadUrl.trim() || undefined,
+    } as any);
 
 
     if (!result.success) {
@@ -140,6 +201,8 @@ export default function AddAnimeScreen() {
     setGenre('');
     setCategory('Movies');
     setIsFeatured(false);
+    setDownloadUrl('');
+    setVideoSources([]);
   };
 
   const inputStyle = [styles.input, { backgroundColor: themeColors.backgroundElement, color: themeColors.text }];
@@ -174,7 +237,6 @@ export default function AddAnimeScreen() {
       style={[styles.container, { backgroundColor: themeColors.background }]}
     >
       <View style={[styles.contentWrapper, { maxWidth: Math.min(maxContentWidth, 800) }]}>
-        {/* Custom Header */}
         <View style={styles.headerBar}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/adminpanel'))} style={[styles.backBtn, { backgroundColor: themeColors.backgroundElement }]}>
             <ArrowLeft color={themeColors.text} size={22} />
@@ -184,7 +246,6 @@ export default function AddAnimeScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          {/* 🏷️ Category Selection Group */}
           <View style={styles.fieldGroup}>
             <Text style={[styles.label, { color: themeColors.textSecondary }]}>MEDIA CATEGORY *</Text>
             <View style={styles.categoryRow}>
@@ -264,7 +325,21 @@ export default function AddAnimeScreen() {
             />
           </View>
 
-          {/* Episode Link Manager */}
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: themeColors.textSecondary }]}>DOWNLOAD URL</Text>
+            <TextInput
+              style={inputStyle}
+              placeholder="https://... (title-level download link)"
+              placeholderTextColor={themeColors.textSecondary}
+              value={downloadUrl}
+              onChangeText={setDownloadUrl}
+              keyboardType="url"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!loading}
+            />
+          </View>
+
           <View style={[styles.fieldGroup, { backgroundColor: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#242436' }]}>
             <Text style={[styles.label, { color: themeColors.textSecondary }]}>ADD OR UPDATE EPISODE LINK</Text>
 
@@ -317,6 +392,51 @@ export default function AddAnimeScreen() {
                     </View>
                   ))}
                 </View>
+              </View>
+            )}
+          </View>
+
+          <View style={[styles.fieldGroup, { backgroundColor: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#242436' }]}>
+            <Text style={[styles.label, { color: themeColors.textSecondary }]}>EPISODE SERVERS & QUALITIES</Text>
+            <Text style={{ color: themeColors.textSecondary, fontSize: 12, lineHeight: 18 }}>Add as many servers as you like for each episode. All fields are optional, but a server is only saved when it has at least one URL.</Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <TextInput style={[inputStyle, { marginBottom: 0 }]} placeholder="Ep #" placeholderTextColor={themeColors.textSecondary} value={newServerEp} onChangeText={setNewServerEp} keyboardType="number-pad" editable={!loading} />
+              </View>
+              <View style={{ flex: 3 }}>
+                <TextInput style={[inputStyle, { marginBottom: 0 }]} placeholder="Server Name" placeholderTextColor={themeColors.textSecondary} value={newServerName} onChangeText={setNewServerName} autoCapitalize="none" autoCorrect={false} editable={!loading} />
+              </View>
+            </View>
+            <TextInput style={inputStyle} placeholder="480p URL" placeholderTextColor={themeColors.textSecondary} value={newServer480} onChangeText={setNewServer480} keyboardType="url" autoCapitalize="none" autoCorrect={false} editable={!loading} />
+            <TextInput style={inputStyle} placeholder="720p URL" placeholderTextColor={themeColors.textSecondary} value={newServer720} onChangeText={setNewServer720} keyboardType="url" autoCapitalize="none" autoCorrect={false} editable={!loading} />
+            <TextInput style={inputStyle} placeholder="1080p URL" placeholderTextColor={themeColors.textSecondary} value={newServer1080} onChangeText={setNewServer1080} keyboardType="url" autoCapitalize="none" autoCorrect={false} editable={!loading} />
+            <TextInput style={inputStyle} placeholder="Download URL" placeholderTextColor={themeColors.textSecondary} value={newServerDownload} onChangeText={setNewServerDownload} keyboardType="url" autoCapitalize="none" autoCorrect={false} editable={!loading} />
+            {serverError ? <Text style={{ color: '#FF4D4D', fontSize: 12, marginBottom: 8, fontWeight: 'bold' }}>{serverError}</Text> : null}
+            <Pressable style={{ backgroundColor: themeColors.primary, paddingVertical: 10, borderRadius: 8, alignItems: 'center' }} onPress={handleAddServer} disabled={loading}>
+              <Text style={{ color: '#fff', fontWeight: '800' }}>Add Server</Text>
+            </Pressable>
+            {videoSources.length > 0 && (
+              <View style={{ marginTop: 16, gap: 16 }}>
+                {Array.from(new Set(videoSources.map(s => s.episode))).sort((a, b) => a - b).map(epNum => (
+                  <View key={epNum}>
+                    <Text style={{ color: themeColors.textSecondary, fontSize: 12, marginBottom: 8, fontWeight: '700' }}>EPISODE {epNum} SERVERS:</Text>
+                    {videoSources.map((srv, idx) => srv.episode === epNum ? (
+                      <View key={idx} style={{ backgroundColor: '#242436', padding: 12, borderRadius: 8, gap: 8, marginTop: 8 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>{srv.server || 'Server'} — Ep {srv.episode}</Text>
+                          <Pressable onPress={() => handleRemoveServer(idx)}>
+                            <Text style={{ color: '#FF4D4D', fontSize: 13, fontWeight: '800' }}>Remove</Text>
+                          </Pressable>
+                        </View>
+                        <TextInput style={[inputStyle, { marginBottom: 0 }]} placeholder="Server Name" placeholderTextColor={themeColors.textSecondary} value={srv.server} onChangeText={(v) => handleUpdateServer(idx, 'server', v)} autoCapitalize="none" autoCorrect={false} editable={!loading} />
+                        <TextInput style={[inputStyle, { marginBottom: 0 }]} placeholder="480p URL" placeholderTextColor={themeColors.textSecondary} value={srv.url_480} onChangeText={(v) => handleUpdateServer(idx, 'url_480', v)} keyboardType="url" autoCapitalize="none" autoCorrect={false} editable={!loading} />
+                        <TextInput style={[inputStyle, { marginBottom: 0 }]} placeholder="720p URL" placeholderTextColor={themeColors.textSecondary} value={srv.url_720} onChangeText={(v) => handleUpdateServer(idx, 'url_720', v)} keyboardType="url" autoCapitalize="none" autoCorrect={false} editable={!loading} />
+                        <TextInput style={[inputStyle, { marginBottom: 0 }]} placeholder="1080p URL" placeholderTextColor={themeColors.textSecondary} value={srv.url_1080} onChangeText={(v) => handleUpdateServer(idx, 'url_1080', v)} keyboardType="url" autoCapitalize="none" autoCorrect={false} editable={!loading} />
+                        <TextInput style={[inputStyle, { marginBottom: 0 }]} placeholder="Download URL" placeholderTextColor={themeColors.textSecondary} value={srv.download_url} onChangeText={(v) => handleUpdateServer(idx, 'download_url', v)} keyboardType="url" autoCapitalize="none" autoCorrect={false} editable={!loading} />
+                      </View>
+                    ) : null)}
+                  </View>
+                ))}
               </View>
             )}
           </View>
