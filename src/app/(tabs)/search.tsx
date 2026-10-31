@@ -47,7 +47,7 @@ export default function SearchScreen() {
     if (params.category) setSelectedCategory(params.category as MediaCategory);
     if (params.genre) setSelectedGenre(params.genre as string);
   }, [params.category, params.genre]);
-  const [mediaList, setMediaList] = useState<AnimeItem[]>(DEFAULT_CATALOG);
+  const [mediaList, setMediaList] = useState<AnimeItem[]>(DEFAULT_CATALOG); const [mlbdSearchItems, setMlbdSearchItems] = useState<AnimeItem[]>([]); const MLBD_PROXY_URL = 'https://xzkbzcbcivilqvdearsq.supabase.co/functions/v1/mlbd-proxy'; const mlbdCategoryForKind = (kind: string) => kind === 'movie' ? 'Movies' : kind === 'anime' ? 'Anime Series' : 'Drama'; const mlbdRowsFromResponse = (res: any): any[] => { const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : Array.isArray(res?.results) ? res.results : Array.isArray(res?.items) ? res.items : []; return list; }; const mapMlbdRowsToItems = (rows: any): AnimeItem[] => mlbdRowsFromResponse(rows).filter((row: any) => Array.isArray(row) && row[5] !== 1 && row[5] !== '1').map((row: any) => { const kind = String(row[3] || 'movie').toLowerCase(); return { id: `mlbd-${kind}-${row[1]}`, title: row[0], image_url: row[2] || null, episodes: 1, genre: row[3], category: mlbdCategoryForKind(kind), is_featured: false } as AnimeItem; });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -159,7 +159,7 @@ export default function SearchScreen() {
           is_featured: false,
           published_at: s.premiered || null,
         }));
-        const movieItems = (() => { const seen = new Set<number>(); const list = [...(itunesRes1?.results || []), ...(itunesRes2?.results || [])]; return list.filter((m: any) => m && m.trackId && !seen.has(m.trackId) && seen.add(m.trackId)).filter((m: any) => m.trackName).map((m: any) => ({ id: `itunes-${m.trackId}`, title: m.trackName, description: m.longDescription || m.shortDescription || null, image_url: m.artworkUrl100 ? m.artworkUrl100.replace('100x100bb.jpg', '600x600bb.jpg') : null, episodes: 1, genre: m.primaryGenreName || 'Movie', category: 'Movies', is_featured: false, published_at: m.releaseDate || null })); })(); const kdramaItems = (() => { const seen = new Set<number>(); const list = [...(Array.isArray(kdramaRes1) ? kdramaRes1 : []), ...(Array.isArray(kdramaRes2) ? kdramaRes2 : [])]; return list.filter((entry: any) => entry && entry.show && !seen.has(entry.show.id) && seen.add(entry.show.id)).map((entry: any) => entry.show).filter((s: any) => { const text = `${s.name || ''} ${s.summary || ''}`.toLowerCase(); return s.language === 'Korean' || text.includes('korean') || text.includes('korea') || text.includes('seoul'); }).map((s: any) => ({ id: `tvmaze-kdrama-${s.id}`, title: s.name, description: s.summary ? s.summary.replace(/<[^>]*>/g, '') : null, image_url: s.image?.original || s.image?.medium || null, episodes: 1, genre: s.genres?.[0] || 'Drama', category: 'K-Drama', is_featured: false, published_at: s.premiered || null })); })(); combined = [...ghibliItems, ...kitsuItems, ...anilistItems, ...tvItems, ...movieItems, ...kdramaItems];
+        const movieItems = (() => { const seen = new Set<number>(); const list = [...(itunesRes1?.results || []), ...(itunesRes2?.results || [])]; return list.filter((m: any) => m && m.trackId && !seen.has(m.trackId) && seen.add(m.trackId)).filter((m: any) => m.trackName).map((m: any) => ({ id: `itunes-${m.trackId}`, title: m.trackName, description: m.longDescription || m.shortDescription || null, image_url: m.artworkUrl100 ? m.artworkUrl100.replace('100x100bb.jpg', '600x600bb.jpg') : null, episodes: 1, genre: m.primaryGenreName || 'Movie', category: 'Movies', is_featured: false, published_at: m.releaseDate || null })); })(); const kdramaItems = (() => { const seen = new Set<number>(); const list = [...(Array.isArray(kdramaRes1) ? kdramaRes1 : []), ...(Array.isArray(kdramaRes2) ? kdramaRes2 : [])]; return list.filter((entry: any) => entry && entry.show && !seen.has(entry.show.id) && seen.add(entry.show.id)).map((entry: any) => entry.show).filter((s: any) => { const text = `${s.name || ''} ${s.summary || ''}`.toLowerCase(); return s.language === 'Korean' || text.includes('korean') || text.includes('korea') || text.includes('seoul'); }).map((s: any) => ({ id: `tvmaze-kdrama-${s.id}`, title: s.name, description: s.summary ? s.summary.replace(/<[^>]*>/g, '') : null, image_url: s.image?.original || s.image?.medium || null, episodes: 1, genre: s.genres?.[0] || 'Drama', category: 'K-Drama', is_featured: false, published_at: s.premiered || null })); })(); combined = [...ghibliItems, ...kitsuItems, ...anilistItems, ...tvItems, ...movieItems, ...kdramaItems]; const mlbdPopularRes = await fetchJson(`${MLBD_PROXY_URL}?action=popular`).catch(() => null); combined = [...combined, ...mapMlbdRowsToItems(mlbdPopularRes)];
       }
       setMediaList(combined);
       } catch (err) {
@@ -170,9 +170,9 @@ export default function SearchScreen() {
       }
     }
     loadData();
-  }, []);
+  }, []); useEffect(() => { const q = query.trim(); if (!q) { setMlbdSearchItems([]); return; } const timer = setTimeout(async () => { try { const r = await fetch(`${MLBD_PROXY_URL}?action=search&q=${encodeURIComponent(q)}`); if (!r.ok) return; const res = await r.json().catch(() => null); setMlbdSearchItems(mapMlbdRowsToItems(res)); } catch { } }, 400); return () => clearTimeout(timer); }, [query]);
 
-  const filteredList = mediaList.filter((item) => {
+  const filteredList = [...mediaList, ...mlbdSearchItems.filter((mlbdItem: any) => !mediaList.some((m) => String(m.id) === String(mlbdItem.id)))].filter((item) => {
     const matchesQuery =
       query.trim() === '' ||
       item.title.toLowerCase().includes(query.toLowerCase()) ||
