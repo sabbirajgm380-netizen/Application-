@@ -139,6 +139,78 @@ export default function HomeScreen() {
 
       combined = [...newLocalItems, ...customItems, ...defaultItems];
 
+      if (combined.length === 0) {
+        const fetchJson = async (url: string, options?: any) => {
+          try {
+            const r = await fetch(url, options);
+            return r.ok ? await r.json() : null;
+          } catch {
+            return null;
+          }
+        };
+        const [ghibliRes, kitsuRes1, kitsuRes2, tvRes, anilistRes] = await Promise.all([
+          fetchJson('https://ghibliapi.vercel.app/films').catch(() => null),
+          fetchJson('https://kitsu.io/api/edge/anime?page[limit]=20&sort=-averageRating').catch(() => null),
+          fetchJson('https://kitsu.io/api/edge/anime?page[limit]=20&page[offset]=20&sort=-averageRating').catch(() => null),
+          fetchJson('https://api.tvmaze.com/shows?page=0').catch(() => null),
+          fetchJson('https://graphql.anilist.co', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+              query: 'query { Page(perPage: 20) { media(type: ANIME, sort: TRENDING_DESC) { id title { romaji english } coverImage { large } genres episodes description } } }',
+            }),
+          }).catch(() => null),
+        ]);
+        const ghibliItems = (Array.isArray(ghibliRes) ? ghibliRes : []).slice(0, 22).map((f: any, i: number) => ({
+          id: `ghibli-${f.id || i}`,
+          title: f.title,
+          description: f.description || null,
+          image_url: f.image || null,
+          episodes: 1,
+          genre: 'Fantasy',
+          category: 'Anime Movies',
+          is_featured: i < 4,
+          published_at: f.release_date ? `${f.release_date}-01-01` : null,
+        }));
+        const kitsuList = [...(kitsuRes1?.data || []), ...(kitsuRes2?.data || [])];
+        const kitsuItems = kitsuList.map((k: any) => {
+          const a = k.attributes || {};
+          return {
+            id: `kitsu-${k.id}`,
+            title: (a.titles && a.titles.en) || a.canonicalTitle || 'Untitled',
+            description: a.synopsis || null,
+            image_url: (a.posterImage && (a.posterImage.large || a.posterImage.original)) || null,
+            episodes: a.episodeCount || 1,
+            genre: 'Anime',
+            category: a.subtype === 'movie' ? 'Anime Movies' : 'Anime Series',
+            is_featured: false,
+            published_at: a.startDate || null,
+          };
+        });
+        const anilistItems = (anilistRes?.data?.Page?.media || []).map((m: any) => ({
+          id: `anilist-${m.id}`,
+          title: m.title?.english || m.title?.romaji || 'Untitled',
+          description: m.description ? m.description.replace(/<[^>]*>/g, '') : null,
+          image_url: m.coverImage?.large || null,
+          episodes: m.episodes || 1,
+          genre: m.genres?.[0] || 'Anime',
+          category: 'Anime Series',
+          is_featured: false,
+          published_at: null,
+        }));
+        const tvItems = (Array.isArray(tvRes) ? tvRes : []).slice(0, 40).map((s: any) => ({
+          id: `tvmaze-${s.id}`,
+          title: s.name,
+          description: s.summary ? s.summary.replace(/<[^>]*>/g, '') : null,
+          image_url: s.image?.original || s.image?.medium || null,
+          episodes: 1,
+          genre: s.genres?.[0] || 'Drama',
+          category: 'Drama',
+          is_featured: false,
+          published_at: s.premiered || null,
+        }));
+        combined = [...ghibliItems, ...kitsuItems, ...anilistItems, ...tvItems];
+      }
       setAllMedia(combined);
     } catch (err) {
       console.warn('Error fetching media:', err);
