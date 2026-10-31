@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   X,
   Flame,
@@ -42,8 +43,18 @@ interface RewardsHubModalProps {
   onClose: () => void;
 }
 
+function EmptyStateView({ title, message }: { title: string; message: string }) {
+  return (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyStateTitle}>{title}</Text>
+      <Text style={styles.emptyStateText}>{message}</Text>
+    </View>
+  );
+}
+
 export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
   const themeColors = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useLanguage();
   const { user } = useAuth();
   const { showRewardedAd } = useAdMob();
@@ -82,6 +93,14 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
   const [spinAnim] = useState(() => new Animated.Value(0));
   const [isSpinning, setIsSpinning] = useState(false);
   const [wonReward, setWonReward] = useState<SpinReward | null>(null);
+  const [spinResultVisible, setSpinResultVisible] = useState(false);
+  const [rewardToast, setRewardToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!rewardToast) return;
+    const timer = setTimeout(() => setRewardToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [rewardToast]);
 
   const levelXPProgress = xp - currentLevelBaseXP;
   const levelXPTarget = nextLevelXP - currentLevelBaseXP;
@@ -91,11 +110,15 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
     if (isSpinning || !canSpinWheel) return;
     setIsSpinning(true);
     setWonReward(null);
+    setSpinResultVisible(false);
+    setRewardToast(null);
 
     const targetReward = spinWheel();
     const targetIdx = SPIN_REWARDS.findIndex((r) => r.id === targetReward.id);
     const sliceAngle = 360 / SPIN_REWARDS.length;
-    const finalDegree = 360 * 5 + (360 - targetIdx * sliceAngle);
+    // Each wedge is centred on targetIdx * sliceAngle, with the pointer at the top.
+    // Rotate the wheel so that centre lands under the pointer, plus full turns.
+    const finalDegree = 360 * 5 + ((360 - targetIdx * sliceAngle) % 360);
 
     spinAnim.setValue(0);
     Animated.timing(spinAnim, {
@@ -105,8 +128,32 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
       useNativeDriver: Platform.OS !== 'web',
     }).start(() => {
       setIsSpinning(false);
+      // Reveal the win result only after the animation has finished.
       setWonReward(targetReward);
+      setSpinResultVisible(true);
+      setRewardToast(`🎉 You won ${targetReward.label}!`);
     });
+  };
+
+  const handleClaimMission = (mission: { id: string; completed: boolean; claimed: boolean; rewardCoins: number; rewardXP: number }) => {
+    if (!mission.completed || mission.claimed) return;
+    claimMission(mission.id);
+    setRewardToast(`Claimed: +${mission.rewardCoins} 💰 · +${mission.rewardXP} ⚡`);
+  };
+
+  const handleClaimStreak = () => {
+    if (hasClaimedDailyStreak) return;
+    const reward = claimDailyStreak();
+    if (reward.coins || reward.xp) {
+      setRewardToast(`Streak claimed: +${reward.coins} 💰 · +${reward.xp} ⚡`);
+    }
+  };
+
+  const handleUnlockTheme = (theme: { id: string; name: string }) => {
+    const unlocked = unlockTheme(theme.id);
+    if (unlocked) {
+      setRewardToast(`${theme.name} unlocked!`);
+    }
   };
 
   const spinRotation = spinAnim.interpolate({
@@ -121,7 +168,7 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
+      <View style={[styles.modalOverlay, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
         <View style={[styles.modalCard, { backgroundColor: '#0C0C12' }]}>
           {/* Header */}
           <View style={styles.modalHeader}>
@@ -187,6 +234,12 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
               <Text style={styles.admobRewardPillText}>+100 💰</Text>
             </View>
           </Pressable>
+
+          {rewardToast && (
+            <Pressable style={styles.rewardToast} onPress={() => setRewardToast(null)}>
+              <Text style={styles.rewardToastText}>{rewardToast}</Text>
+            </Pressable>
+          )}
 
           {/* Navigation Tabs */}
           <ScrollView
@@ -299,6 +352,9 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
                   ))}
                 </View>
 
+                {filteredMissions.length === 0 ? (
+                  <EmptyStateView title="No missions here" message="Try another filter or check back later for new missions." />
+                ) : (
                 <View style={styles.missionsList}>
                   {filteredMissions.map((m) => (
                     <View key={m.id} style={styles.missionCard}>
@@ -344,7 +400,7 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
                               m.completed && { backgroundColor: themeColors.primary },
                             ]}
                             disabled={!m.completed}
-                            onPress={() => claimMission(m.id)}
+                            onPress={() => handleClaimMission(m)}
                           >
                             <Text style={styles.claimBtnText}>
                               {m.completed ? t('claimReward') : t('inProgress')}
@@ -355,6 +411,7 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
                     </View>
                   ))}
                 </View>
+                )}
               </View>
             )}
 
@@ -366,7 +423,9 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
                   Choose an active festival to participate in unique quests & earn exclusive badges!
                 </Text>
 
-                {allEvents.map((evt) => {
+                {allEvents.length === 0 ? (
+                  <EmptyStateView title="No events right now" message="Check back later for the next seasonal festival." />
+                ) : allEvents.map((evt) => {
                   const isActive = activeEvent.id === evt.id;
                   return (
                     <View
@@ -430,6 +489,9 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
                   Spend your earned AniFlix Coins to unlock and equip custom event themes!
                 </Text>
 
+                {themes.length === 0 ? (
+                  <EmptyStateView title="No themes available" message="Check back later for new themes in the shop." />
+                ) : (
                 <View style={styles.themesGrid}>
                   {themes.map((th) => {
                     const isEquipped = activeTheme.id === th.id;
@@ -470,7 +532,7 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
                                   !canAfford && styles.buyThemeBtnDisabled,
                                 ]}
                                 disabled={!canAfford}
-                                onPress={() => unlockTheme(th.id)}
+                                onPress={() => handleUnlockTheme(th)}
                               >
                                 <Text style={styles.buyThemeBtnText}>
                                   Unlock for 💰 {th.costCoins}
@@ -483,6 +545,7 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
                     );
                   })}
                 </View>
+                )}
               </View>
             )}
 
@@ -494,6 +557,9 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
                   Collect prestige badges by watching movies, building streaks, and reviewing!
                 </Text>
 
+                {badges.length === 0 ? (
+                  <EmptyStateView title="No badges yet" message="Watch, build streaks and review to earn your first badge." />
+                ) : (
                 <View style={styles.badgesList}>
                   {badges.map((b) => (
                     <View
@@ -522,6 +588,7 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
                     </View>
                   ))}
                 </View>
+                )}
               </View>
             )}
 
@@ -545,12 +612,15 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
                       <View
                         key={r.id}
                         style={[
-                          styles.wheelSlice,
-                          { transform: [{ rotate: `${i * 60}deg` }] },
+                          styles.wheelSegment,
+                          { transform: [{ rotate: `${i * (360 / SPIN_REWARDS.length)}deg` }] },
                         ]}
                       >
-                        <Text style={styles.sliceIcon}>{r.icon}</Text>
-                        <Text style={styles.sliceLabel}>{r.label.split(' ')[0]}</Text>
+                        <View style={[styles.wheelWedge, { borderTopColor: r.color }]} />
+                        <View style={styles.wheelSegmentLabel}>
+                          <Text style={styles.sliceIcon}>{r.icon}</Text>
+                          <Text style={styles.sliceLabel} numberOfLines={2}>{r.label}</Text>
+                        </View>
                       </View>
                     ))}
                   </Animated.View>
@@ -559,7 +629,7 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
                   </View>
                 </View>
 
-                {wonReward && (
+                {wonReward && spinResultVisible && (
                   <View style={styles.wonBanner}>
                     <Text style={styles.wonTitle}>🎉 You Won {wonReward.label}!</Text>
                   </View>
@@ -625,7 +695,7 @@ export function RewardsHubModal({ visible, onClose }: RewardsHubModalProps) {
                       hasClaimedDailyStreak && styles.claimStreakBtnClaimed,
                     ]}
                     disabled={hasClaimedDailyStreak}
-                    onPress={claimDailyStreak}
+                    onPress={handleClaimStreak}
                   >
                     <Text style={styles.claimStreakBtnText}>
                       {hasClaimedDailyStreak
@@ -843,6 +913,43 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 11,
   },
+  rewardToast: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    backgroundColor: '#1E1E2C',
+    borderWidth: 1,
+    borderColor: '#FFB800',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  rewardToastText: {
+    color: '#FFD700',
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    backgroundColor: '#13131D',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#242436',
+  },
+  emptyStateTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFF',
+    marginBottom: 4,
+  },
+  emptyStateText: {
+    fontSize: 12,
+    color: '#8E8EA4',
+    textAlign: 'center',
+  },
   tabsScrollView: {
     flexGrow: 0,
     height: 52,
@@ -999,6 +1106,8 @@ const styles = StyleSheet.create({
   },
   claimBtnDisabled: {
     backgroundColor: '#202030',
+    borderWidth: 1,
+    borderColor: '#3A3A52',
   },
   claimBtnText: {
     fontSize: 12,
@@ -1356,11 +1465,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
   },
-  wheelSlice: {
+  wheelSegment: {
     position: 'absolute',
-    width: 60,
-    height: 80,
+    width: 200,
+    height: 200,
+    alignItems: 'center',
+  },
+  wheelWedge: {
+    position: 'absolute',
+    top: 0,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 58,
+    borderRightWidth: 58,
+    borderTopWidth: 100,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  wheelSegmentLabel: {
+    position: 'absolute',
     top: 10,
+    width: 72,
     alignItems: 'center',
   },
   sliceIcon: {
@@ -1371,6 +1496,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '700',
     marginTop: 2,
+    textAlign: 'center',
   },
   wheelCenterHub: {
     position: 'absolute',
