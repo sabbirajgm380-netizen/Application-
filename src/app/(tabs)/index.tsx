@@ -80,7 +80,7 @@ export default function HomeScreen() {
   
   const { openSidebar } = useSidebar();
 
-  const [allMedia, setAllMedia] = useState<AnimeItem[]>(DEFAULT_CATALOG);
+  const [allMedia, setAllMedia] = useState<AnimeItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<'All' | MediaCategory>('All');
   const [activeGenre, setActiveGenre] = useState<string>('All');
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
@@ -130,92 +130,19 @@ export default function HomeScreen() {
           ...(overrides[String(item.id)] || {}),
         })) as AnimeItem[];
         
-      const defaultItems = DEFAULT_CATALOG
-        .filter((d) => !deleted.includes(String(d.id)))
-        .map((d) => ({ ...d, ...(overrides[String(d.id)] || {}) }));
+      
         
       const newLocalItems = Object.values(overrides)
-        .filter((override: any) => !deleted.includes(String(override.id)) && !safeData.some((d: any) => String(d.id) === String(override.id)) && !DEFAULT_CATALOG.some(d => String(d.id) === String(override.id))) as AnimeItem[];
+        .filter((override: any) => !deleted.includes(String(override.id)) && !safeData.some((d: any) => String(d.id) === String(override.id))) as AnimeItem[];
 
-      combined = [...newLocalItems, ...customItems, ...defaultItems];
+      combined = [...newLocalItems, ...customItems];
 
-      if (combined.length === 0) {
-        const fetchJson = async (url: string, options?: any) => {
-          try {
-            const r = await fetch(url, options);
-            return r.ok ? await r.json() : null;
-          } catch {
-            return null;
-          }
-        };
-        const [ghibliRes, kitsuRes1, kitsuRes2, tvRes, itunesRes1, itunesRes2, kdramaRes1, kdramaRes2, anilistRes] = await Promise.all([
-          fetchJson('https://ghibliapi.vercel.app/films').catch(() => null),
-          fetchJson('https://kitsu.io/api/edge/anime?page[limit]=20&sort=-averageRating').catch(() => null),
-          fetchJson('https://kitsu.io/api/edge/anime?page[limit]=20&page[offset]=20&sort=-averageRating').catch(() => null),
-          fetchJson('https://api.tvmaze.com/shows?page=0').catch(() => null), fetchJson('https://itunes.apple.com/search?term=action&media=movie&limit=20').catch(() => null), fetchJson('https://itunes.apple.com/search?term=drama&media=movie&limit=20').catch(() => null), fetchJson('https://api.tvmaze.com/search/shows?q=korean%20drama').catch(() => null), fetchJson('https://api.tvmaze.com/search/shows?q=korea').catch(() => null),
-          fetchJson('https://graphql.anilist.co', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({
-              query: 'query { Page(perPage: 20) { media(type: ANIME, sort: TRENDING_DESC) { id title { romaji english } coverImage { large } genres episodes description } } }',
-            }),
-          }).catch(() => null),
-        ]);
-        const ghibliItems = (Array.isArray(ghibliRes) ? ghibliRes : []).slice(0, 22).map((f: any, i: number) => ({
-          id: `ghibli-${f.id || i}`,
-          title: f.title,
-          description: f.description || null,
-          image_url: f.image || null,
-          episodes: 1,
-          genre: 'Fantasy',
-          category: 'Anime Movies',
-          is_featured: i < 4,
-          published_at: f.release_date ? `${f.release_date}-01-01` : null,
-        }));
-        const kitsuList = [...(kitsuRes1?.data || []), ...(kitsuRes2?.data || [])];
-        const kitsuItems = kitsuList.map((k: any) => {
-          const a = k.attributes || {};
-          return {
-            id: `kitsu-${k.id}`,
-            title: (a.titles && a.titles.en) || a.canonicalTitle || 'Untitled',
-            description: a.synopsis || null,
-            image_url: (a.posterImage && (a.posterImage.large || a.posterImage.original)) || null,
-            episodes: a.episodeCount || 1,
-            genre: 'Anime',
-            category: a.subtype === 'movie' ? 'Anime Movies' : 'Anime Series',
-            is_featured: false,
-            published_at: a.startDate || null,
-          };
-        });
-        const anilistItems = (anilistRes?.data?.Page?.media || []).map((m: any) => ({
-          id: `anilist-${m.id}`,
-          title: m.title?.english || m.title?.romaji || 'Untitled',
-          description: m.description ? m.description.replace(/<[^>]*>/g, '') : null,
-          image_url: m.coverImage?.large || null,
-          episodes: m.episodes || 1,
-          genre: m.genres?.[0] || 'Anime',
-          category: 'Anime Series',
-          is_featured: false,
-          published_at: null,
-        }));
-        const tvItems = (Array.isArray(tvRes) ? tvRes : []).slice(0, 40).map((s: any) => ({
-          id: `tvmaze-${s.id}`,
-          title: s.name,
-          description: s.summary ? s.summary.replace(/<[^>]*>/g, '') : null,
-          image_url: s.image?.original || s.image?.medium || null,
-          episodes: 1,
-          genre: s.genres?.[0] || 'Drama',
-          category: 'Drama',
-          is_featured: false,
-          published_at: s.premiered || null,
-        }));
-        const movieItems = (() => { const seen = new Set<number>(); const list = [...(itunesRes1?.results || []), ...(itunesRes2?.results || [])]; return list.filter((m: any) => m && m.trackId && !seen.has(m.trackId) && seen.add(m.trackId)).filter((m: any) => m.trackName).map((m: any) => ({ id: `itunes-${m.trackId}`, title: m.trackName, description: m.longDescription || m.shortDescription || null, image_url: m.artworkUrl100 ? m.artworkUrl100.replace('100x100bb.jpg', '600x600bb.jpg') : null, episodes: 1, genre: m.primaryGenreName || 'Movie', category: 'Movies', is_featured: false, published_at: m.releaseDate || null })); })(); const kdramaItems = (() => { const seen = new Set<number>(); const list = [...(Array.isArray(kdramaRes1) ? kdramaRes1 : []), ...(Array.isArray(kdramaRes2) ? kdramaRes2 : [])]; return list.filter((entry: any) => entry && entry.show && !seen.has(entry.show.id) && seen.add(entry.show.id)).map((entry: any) => entry.show).filter((s: any) => { const text = `${s.name || ''} ${s.summary || ''}`.toLowerCase(); return s.language === 'Korean' || text.includes('korean') || text.includes('korea') || text.includes('seoul'); }).map((s: any) => ({ id: `tvmaze-kdrama-${s.id}`, title: s.name, description: s.summary ? s.summary.replace(/<[^>]*>/g, '') : null, image_url: s.image?.original || s.image?.medium || null, episodes: 1, genre: s.genres?.[0] || 'Drama', category: 'K-Drama', is_featured: false, published_at: s.premiered || null })); })(); combined = [...ghibliItems, ...kitsuItems, ...anilistItems, ...tvItems, ...movieItems, ...kdramaItems]; const mlbdPopularRes = await fetchJson(`${MLBD_PROXY_URL}?action=popular`).catch(() => null); combined = [...combined, ...mapMlbdRowsToItems(mlbdPopularRes)];
-      }
+      const fetchJson = async (url: string, options?: any) => { try { const r = await fetch(url, options); return r.ok ? await r.json() : null; } catch { return null; } }; const mlbdPopularRes = await fetchJson('https://xzkbzcbcivilqvdearsq.supabase.co/functions/v1/mlbd-proxy?action=popular').catch(() => null); combined = [...combined, ...mapMlbdRowsToItems(mlbdPopularRes)];
       setAllMedia(combined);
     } catch (err) {
       console.warn('Error fetching media:', err);
       hasLoadedMediaRef.current = false;
-      setAllMedia(DEFAULT_CATALOG);
+      setAllMedia([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -328,7 +255,7 @@ export default function HomeScreen() {
     router.push({ pathname: '/watch', params: { id } });
   };
 
-  const activeHeroItem = featured[currentHeroIndex] || DEFAULT_CATALOG[0];
+  const activeHeroItem = featured[currentHeroIndex];
   const activeHeroFavorited = activeHeroItem ? isFavorite(activeHeroItem.id) : false;
 
   const renderRankedCard = ({ item, index }: { item: AnimeItem; index: number }) => {
