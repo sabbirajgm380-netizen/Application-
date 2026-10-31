@@ -69,13 +69,13 @@ export default function HomeScreen() {
   const [showVipModal, setShowVipModal] = useState(false);
   const {
     heroHeight,
-    railCardWidth,
-    railCardHeight,
+    
+    
     rankedCardWidth,
     rankedCardHeight,
     maxContentWidth,
     isDesktop,
-    isTablet,
+    isTablet,    cardWidth,    cardGap,    pagePad,
   } = useResponsive();
   
   const { openSidebar } = useSidebar();
@@ -395,12 +395,12 @@ export default function HomeScreen() {
           styles.standardCard,
           {
             backgroundColor: themeColors.backgroundCard,
-            width: railCardWidth,
+            width: cardWidth,
           },
         ]}
         onPress={() => handleWatch(item.id)}
       >
-        <View style={[styles.standardImageWrapper, { width: railCardWidth, height: railCardHeight }]}>
+        <View style={[styles.standardImageWrapper, { width: cardWidth, height: cardWidth * 1.45 }]}>
           <Image
             source={{ uri: item.image_url || PLACEHOLDER_HERO_IMAGES[0] }}
             style={styles.standardImage}
@@ -631,7 +631,7 @@ export default function HomeScreen() {
                 {genreFiltered.length} Titles
               </Text>
             </View>
-            <View style={[styles.standardList, { flexDirection: 'row', flexWrap: 'wrap', paddingTop: 10 }]}>
+            <View style={[styles.standardList, { flexDirection: 'row', flexWrap: 'wrap', paddingTop: 10, gap: cardGap, paddingHorizontal: pagePad }]}>
               {genreFiltered.map((item) => {
                 const card = renderStandardCard({ item });
                 return (
@@ -646,7 +646,7 @@ export default function HomeScreen() {
           /* When "All" is chosen, show organized categorized sections */
           <>
             {allMedia.length > 0 && (
-              <View style={[styles.standardList, { flexDirection: 'row', flexWrap: 'wrap', paddingTop: 20 }]}>
+              <View style={[styles.standardList, { flexDirection: 'row', flexWrap: 'wrap', paddingTop: 20, gap: cardGap, paddingHorizontal: pagePad }]}>
                 {allMedia.map((item) => {
                   const card = renderStandardCard({ item });
                   return (
