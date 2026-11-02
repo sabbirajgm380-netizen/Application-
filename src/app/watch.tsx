@@ -507,7 +507,7 @@ export default function WatchScreen() {
         )}
 
         {/* Server / Quality selector: only shown when this title has video_sources. */}
-        {(episodeVideoSources.length > 0 || downloadUrl) && (
+        {(episodeVideoSources.length > 0) && (
           <View style={[styles.speedMenu, { backgroundColor: themeColors.backgroundElement }]}>
             {episodeVideoSources.length > 0 && (
               <>
@@ -565,29 +565,10 @@ export default function WatchScreen() {
                 </View>
               </>
             )}
-            {downloadUrl && (
-              <View style={[styles.speedOptionsGrid, { marginTop: 12 }]}>
-                <Pressable
-                  style={[styles.speedOptionChip, { backgroundColor: themeColors.backgroundCard }]}
-                  onPress={() => {
-                    if (!downloadUrl) return;
-                    try {
-                      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                        window.open(downloadUrl, '_blank');
-                      } else {
-                        void Linking.openURL(downloadUrl);
-                      }
-                    } catch {}
-                  }}
-                >
-                  <Text style={[styles.speedOptionText, { color: themeColors.text }]}>Download</Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
+            View>
         )}
 
-        {isMlbd && mlbdQualities.length > 0 && (<View style={[styles.speedMenu, { backgroundColor: themeColors.backgroundElement }]}><Text style={[styles.speedMenuTitle, { color: themeColors.textSecondary }]}>QUALITY</Text><View style={styles.speedOptionsGrid}>{mlbdQualities.map((q) => { const isCurrent = q === mlbdEffectiveQuality; return (<Pressable key={q} style={[styles.speedOptionChip, isCurrent ? [styles.speedOptionChipActive, { backgroundColor: themeColors.primary }] : { backgroundColor: themeColors.backgroundCard }]} onPress={() => setMlbdQuality(q)}><Text style={[styles.speedOptionText, { color: isCurrent ? '#fff' : '#9A9AA8' }]}>{q}</Text></Pressable>); })}</View>{mlbdAudio && (<Text style={[styles.speedMenuTitle, { color: themeColors.textSecondary, marginTop: 12 }]}>Audio: {mlbdAudio}</Text>)}{mlbdDownloadUrl && (<View style={[styles.speedOptionsGrid, { marginTop: 12 }]}><Pressable style={[styles.speedOptionChip, { backgroundColor: themeColors.backgroundCard }]} onPress={() => { try { if (Platform.OS === 'web' && typeof window !== 'undefined') { window.open(mlbdDownloadUrl, '_blank'); } else { void Linking.openURL(mlbdDownloadUrl); } } catch {} }}><Text style={[styles.speedOptionText, { color: themeColors.text }]}>Download</Text></Pressable></View>)}</View>)} {/* DRM / Screen Protection Badge */}
+        {isMlbd && mlbdQualities.length > 0 && (<View style={[styles.speedMenu, { backgroundColor: themeColors.backgroundElement }]}><Text style={[styles.speedMenuTitle, { color: themeColors.textSecondary }]}>QUALITY</Text><View style={styles.speedOptionsGrid}>{mlbdQualities.map((q) => { const isCurrent = q === mlbdEffectiveQuality; return (<Pressable key={q} style={[styles.speedOptionChip, isCurrent ? [styles.speedOptionChipActive, { backgroundColor: themeColors.primary }] : { backgroundColor: themeColors.backgroundCard }]} onPress={() => setMlbdQuality(q)}><Text style={[styles.speedOptionText, { color: isCurrent ? '#fff' : '#9A9AA8' }]}>{q}</Text></Pressable>); })}</View>{mlbdAudio && (<Text style={[styles.speedMenuTitle, { color: themeColors.textSecondary, marginTop: 12 }]}>Audio: {mlbdAudio}</Text>)}</View>)} {/* DRM / Screen Protection Badge */}
         <View style={styles.drmBanner}>
           <Shield color={themeColors.primary} size={16} />
           <Text style={styles.drmText}>
