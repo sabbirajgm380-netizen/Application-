@@ -138,7 +138,7 @@ export default function HomeScreen() {
       combined = [...newLocalItems, ...customItems];
 
       const fetchJson = async (url: string, options?: any) => { try { const r = await fetch(url, options); return r.ok ? await r.json() : null; } catch { return null; } }; const mlbdPopularRes = await fetchJson('https://xzkbzcbcivilqvdearsq.supabase.co/functions/v1/mlbd-proxy?action=popular').catch(() => null); combined = [...combined, ...mapMlbdRowsToItems(mlbdPopularRes)];
-      setAllMedia(combined);
+      const mlbdAnimeQueries = ['one piece', 'naruto', 'demon slayer', 'jujutsu kaisen', 'dragon ball']; const mlbdAnimeItems: AnimeItem[] = []; const mlbdSeenIds = new Set(combined.map((item) => item.id)); for (const mlbdAnimeQuery of mlbdAnimeQueries) { if (mlbdAnimeItems.length >= 20) break; const mlbdAnimeRes = await fetchJson('https://xzkbzcbcivilqvdearsq.supabase.co/functions/v1/mlbd-proxy?action=search&q=' + encodeURIComponent(mlbdAnimeQuery)).catch(() => null); const mlbdAnimeRows = mlbdRowsFromResponse(mlbdAnimeRes).filter((row: any) => Array.isArray(row) && row[3] === 'anime' && row[5] !== 1 && row[5] !== '1'); for (const mlbdAnimeItem of mapMlbdRowsToItems(mlbdAnimeRows)) { if (mlbdAnimeItems.length >= 20) break; if (!mlbdSeenIds.has(mlbdAnimeItem.id)) { mlbdSeenIds.add(mlbdAnimeItem.id); mlbdAnimeItems.push(mlbdAnimeItem); } } } combined = [...combined, ...mlbdAnimeItems]; setAllMedia(combined);
     } catch (err) {
       console.warn('Error fetching media:', err);
       hasLoadedMediaRef.current = false;
