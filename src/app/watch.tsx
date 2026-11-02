@@ -565,7 +565,7 @@ export default function WatchScreen() {
                 </View>
               </>
             )}
-            View>
+            </View>
         )}
 
         {isMlbd && mlbdQualities.length > 0 && (<View style={[styles.speedMenu, { backgroundColor: themeColors.backgroundElement }]}><Text style={[styles.speedMenuTitle, { color: themeColors.textSecondary }]}>QUALITY</Text><View style={styles.speedOptionsGrid}>{mlbdQualities.map((q) => { const isCurrent = q === mlbdEffectiveQuality; return (<Pressable key={q} style={[styles.speedOptionChip, isCurrent ? [styles.speedOptionChipActive, { backgroundColor: themeColors.primary }] : { backgroundColor: themeColors.backgroundCard }]} onPress={() => setMlbdQuality(q)}><Text style={[styles.speedOptionText, { color: isCurrent ? '#fff' : '#9A9AA8' }]}>{q}</Text></Pressable>); })}</View>{mlbdAudio && (<Text style={[styles.speedMenuTitle, { color: themeColors.textSecondary, marginTop: 12 }]}>Audio: {mlbdAudio}</Text>)}</View>)} {/* DRM / Screen Protection Badge */}
