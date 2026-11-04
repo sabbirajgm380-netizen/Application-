@@ -45,6 +45,7 @@ export const CATEGORIES: { id: 'All' | MediaCategory; label: string; icon: strin
   { id: 'K-Drama', label: 'K-Drama', icon: '🌸' },
   { id: 'Drama', label: 'Drama', icon: '🎭' },
   { id: 'Anime Series', label: 'Anime Series', icon: '⚡' },
+    { id: 'Short Drama', label: 'Short Drama', icon: '📺' },
 ];
 
 const GENRES = ['All', '🔥 Trending', 'Action', 'Drama', 'Romance', 'Sci-Fi', 'Thriller', 'Fantasy', 'Comedy', 'Horror'];
@@ -138,7 +139,13 @@ export default function HomeScreen() {
       combined = [...newLocalItems, ...customItems];
 
       const fetchJson = async (url: string, options?: any) => { try { const r = await fetch(url, options); return r.ok ? await r.json() : null; } catch { return null; } }; const mlbdPopularRes = await fetchJson('https://xzkbzcbcivilqvdearsq.supabase.co/functions/v1/mlbd-proxy?action=popular').catch(() => null); combined = [...combined, ...mapMlbdRowsToItems(mlbdPopularRes)];
-      const mlbdAnimeQueries = ['one piece', 'naruto', 'demon slayer', 'jujutsu kaisen', 'dragon ball']; const mlbdAnimeItems: AnimeItem[] = []; const mlbdSeenIds = new Set(combined.map((item) => item.id)); for (const mlbdAnimeQuery of mlbdAnimeQueries) { if (mlbdAnimeItems.length >= 20) break; const mlbdAnimeRes = await fetchJson('https://xzkbzcbcivilqvdearsq.supabase.co/functions/v1/mlbd-proxy?action=search&q=' + encodeURIComponent(mlbdAnimeQuery)).catch(() => null); const mlbdAnimeRows = mlbdRowsFromResponse(mlbdAnimeRes).filter((row: any) => Array.isArray(row) && row[3] === 'anime' && row[5] !== 1 && row[5] !== '1'); for (const mlbdAnimeItem of mapMlbdRowsToItems(mlbdAnimeRows)) { if (mlbdAnimeItems.length >= 20) break; if (!mlbdSeenIds.has(mlbdAnimeItem.id)) { mlbdSeenIds.add(mlbdAnimeItem.id); mlbdAnimeItems.push(mlbdAnimeItem); } } } combined = [...combined, ...mlbdAnimeItems]; setAllMedia(combined);
+      const mlbdAnimeQueries = ['one piece', 'naruto', 'demon slayer', 'jujutsu kaisen', 'dragon ball']; const mlbdAnimeItems: AnimeItem[] = []; const mlbdSeenIds = new Set(combined.map((item) => item.id)); for (const mlbdAnimeQuery of mlbdAnimeQueries) { if (mlbdAnimeItems.length >= 20) break; const mlbdAnimeRes = await fetchJson('https://xzkbzcbcivilqvdearsq.supabase.co/functions/v1/mlbd-proxy?action=search&q=' + encodeURIComponent(mlbdAnimeQuery)).catch(() => null); const mlbdAnimeRows = mlbdRowsFromResponse(mlbdAnimeRes).filter((row: any) => Array.isArray(row) && row[3] === 'anime' && row[5] !== 1 && row[5] !== '1'); for (const mlbdAnimeItem of mapMlbdRowsToItems(mlbdAnimeRows)) { if (mlbdAnimeItems.length >= 20) break; if (!mlbdSeenIds.has(mlbdAnimeItem.id)) { mlbdSeenIds.add(mlbdAnimeItem.id); mlbdAnimeItems.push(mlbdAnimeItem); } } } combined = [...combined, ...mlbdAnimeItems]; 
+        const anichinRes = await fetchJson('https://api.anichin.bio/dramabox/trending');
+        const anichinItems = Array.isArray(anichinRes?.items) ? anichinRes.items : Array.isArray(anichinRes?.data?.items) ? anichinRes.data.items : [];
+        const anichinSeenIds = new Set(combined.map((item: any) => String(item.id)));
+        const anichinMapped = anichinItems.filter((item: any) => { const anichinId = `anichin-dramabox-${item.id || item.dramaId}`; if (anichinSeenIds.has(anichinId)) return false; anichinSeenIds.add(anichinId); return true; }).slice(0, 20).map((item: any) => ({ id: `anichin-dramabox-${item.id || item.dramaId}`, title: item.title, image_url: item.posterImg || item.cover || null, episodes: item.totalEpisodes || item.episodes || 1, genre: 'Short Drama', category: 'Short Drama', is_featured: false }));
+        combined = [...combined, ...anichinMapped];
+        setAllMedia(combined);
     } catch (err) {
       console.warn('Error fetching media:', err);
       hasLoadedMediaRef.current = false;
@@ -180,6 +187,7 @@ export default function HomeScreen() {
   const kdramaRail = allMedia.filter((item) => item.category === 'K-Drama');
   const dramaRail = allMedia.filter((item) => item.category === 'Drama');
   const animeSeriesRail = allMedia.filter((item) => item.category === 'Anime Series');
+    const shortDramaRail = allMedia.filter((item) => item.category === 'Short Drama');
   const newProducts = allMedia
     .filter((item) => {
       const pubDate = item.published_at || (item as any).created_at;
@@ -585,7 +593,27 @@ export default function HomeScreen() {
               </View>
             )}
 
-            {allMedia.length === 0 && (
+              {shortDramaRail.length > 0 && (
+              <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                      <View style={styles.sectionTitleRow}>
+                          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Short Drama</Text>
+                      </View>
+                      <Text style={[styles.sectionCount, { color: themeColors.textSecondary }]}>{shortDramaRail.length} Titles</Text>
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {shortDramaRail.map((item) => {
+                  const card = renderStandardCard({ item });
+                  return (
+                      <View key={`short-drama-${item.id}`}>
+                          {card}
+                      </View>
+                      );
+              })}
+                  </ScrollView>
+              </View>
+              )}
+              {allMedia.length === 0 && (
               <View style={{ padding: 32, alignItems: 'center', marginHorizontal: 16, marginTop: 24, borderRadius: 16, backgroundColor: themeColors.backgroundCard, borderWidth: 1, borderColor: themeColors.border }}>
                 <Film size={44} color={themeColors.primary} style={{ marginBottom: 12 }} />
                 <Text style={{ color: themeColors.text, fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 6 }}>
