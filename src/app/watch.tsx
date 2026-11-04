@@ -46,6 +46,7 @@ import { ReviewsSection } from '@/components/ReviewsSection';
 import { AdMobBanner } from '@/components/AdMobBanner';
 
 const SPEED_OPTIONS = [0.25, 0.5, 1.0, 1.25, 1.5, 2.0, 4.0]; const MLBD_PROXY_URL = 'https://xzkbzcbcivilqvdearsq.supabase.co/functions/v1/mlbd-proxy'; const MLBD_NOT_CONFIGURED_MESSAGE = 'The video source is not configured yet.'; const mlbdCategoryForKind = (kind: string) => kind === 'movie' ? 'Movies' : kind === 'anime' ? 'Anime Series' : 'Drama';
+const ANICHIN_API_URL = 'https://api.anichin.bio';
 
 type VideoSource = {
   episode: number;
@@ -80,6 +81,11 @@ export default function WatchScreen() {
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [selectedServer, setSelectedServer] = useState<string | null>(null);
   const [selectedQuality, setSelectedQuality] = useState<'480p' | '720p' | '1080p'>('1080p'); const isMlbd = typeof id === 'string' && id.startsWith('mlbd-'); const mlbdParts = isMlbd ? String(id).slice(5).split('-') : []; const mlbdKind = mlbdParts[0] || ''; const mlbdSlug = mlbdParts.slice(1).join('-'); const [mlbdSources, setMlbdSources] = useState<any[]>([]); const [mlbdQuality, setMlbdQuality] = useState<string | null>(null); const [mlbdNotConfigured, setMlbdNotConfigured] = useState(false);
+  const isAnichin = typeof id === 'string' && id.startsWith('anichin-');
+  const anichinParts = isAnichin ? String(id).slice(8).split('-') : [];
+  const anichinSource = anichinParts[0] ?? '';
+  const anichinDramaId = anichinParts.slice(1).join('-');
+  const [anichinEpisodes, setAnichinEpisodes] = useState<any[]>([]);
 
   useEffect(() => {
     awardWatchTimeRewardRef.current = awardWatchTimeReward;
@@ -119,7 +125,19 @@ export default function WatchScreen() {
   }, [playbackSpeed, player]);
 
   useEffect(() => {
-    async function loadData() { if (isMlbd) { try { const r = await fetch(`${MLBD_PROXY_URL}?action=title&slug=${encodeURIComponent(mlbdSlug)}&kind=${encodeURIComponent(mlbdKind)}`); const res = await r.json().catch(() => null); const detail = res?.data ?? res?.detail ?? res; if (!r.ok || !res || res.ok === false || !detail || !Array.isArray(detail.episodes)) { setAnime({ id: String(id), title: mlbdSlug.replace(/-/g, ' '), description: null, episodes: 1, genre: mlbdKind, category: mlbdCategoryForKind(mlbdKind), image_url: null, is_featured: false } as AnimeItem); setMlbdSources([]); setMlbdNotConfigured(true); setPlaybackError(MLBD_NOT_CONFIGURED_MESSAGE); setRecommendations([]); return; } const firstEp = detail.episodes[0] || {}; const sources = Array.isArray(firstEp.sources) ? firstEp.sources : []; setAnime({ id: String(id), title: detail.title || detail.name || mlbdSlug, description: detail.description || detail.synopsis || null, episodes: detail.episodes.length || 1, genre: detail.genre || mlbdKind, category: mlbdCategoryForKind(mlbdKind), image_url: detail.poster || detail.image_url || detail.image || detail.thumbnail || null, is_featured: false } as AnimeItem); setMlbdSources(sources); setMlbdNotConfigured(sources.length === 0); if (sources.length === 0) { setPlaybackError(MLBD_NOT_CONFIGURED_MESSAGE); } else { setPlaybackError(null); } setRecommendations([]); return; } catch { setAnime({ id: String(id), title: mlbdSlug, description: null, episodes: 1, genre: mlbdKind, category: mlbdCategoryForKind(mlbdKind), image_url: null, is_featured: false } as AnimeItem); setMlbdSources([]); setMlbdNotConfigured(true); setPlaybackError(MLBD_NOT_CONFIGURED_MESSAGE); setRecommendations([]); return; } }
+    async function loadData() { 
+      if (isAnichin) {
+        const anichinDetailRes = await fetch(`${ANICHIN_API_URL}/${anichinSource}/detail?id=${encodeURIComponent(anichinDramaId)}`).catch(() => null);
+        const anichinDetailJson = anichinDetailRes && anichinDetailRes.ok ? await anichinDetailRes.json().catch(() => null) : null;
+        const anichinData = anichinDetailJson?.data;
+        if (!anichinData || !Array.isArray(anichinData.episodes)) { setAnime({ id: String(id), title: anichinDramaId, description: null, episodes: 1, genre: 'Short Drama', category: 'Short Drama', image_url: null, is_featured: false }); setAnichinEpisodes([]); setPlaybackError('This short drama is not available yet.'); setRecommendations([]); return; }
+        setAnime({ id: String(id), title: anichinData.title, description: anichinData.synopsis || anichinData.description || null, episodes: anichinData.totalEpisodes || anichinData.episodes.length, genre: 'Short Drama', category: 'Short Drama', image_url: anichinData.posterImg || anichinData.cover || null, is_featured: false });
+        setAnichinEpisodes(anichinData.episodes);
+        setPlaybackError(anichinData.episodes.some((e: any) => !e.locked && String(e.videoUrl || '').startsWith('http')) ? null : 'This short drama is not available yet.');
+        setRecommendations([]);
+        return;
+      }
+      if (isMlbd) { try { const r = await fetch(`${MLBD_PROXY_URL}?action=title&slug=${encodeURIComponent(mlbdSlug)}&kind=${encodeURIComponent(mlbdKind)}`); const res = await r.json().catch(() => null); const detail = res?.data ?? res?.detail ?? res; if (!r.ok || !res || res.ok === false || !detail || !Array.isArray(detail.episodes)) { setAnime({ id: String(id), title: mlbdSlug.replace(/-/g, ' '), description: null, episodes: 1, genre: mlbdKind, category: mlbdCategoryForKind(mlbdKind), image_url: null, is_featured: false } as AnimeItem); setMlbdSources([]); setMlbdNotConfigured(true); setPlaybackError(MLBD_NOT_CONFIGURED_MESSAGE); setRecommendations([]); return; } const firstEp = detail.episodes[0] || {}; const sources = Array.isArray(firstEp.sources) ? firstEp.sources : []; setAnime({ id: String(id), title: detail.title || detail.name || mlbdSlug, description: detail.description || detail.synopsis || null, episodes: detail.episodes.length || 1, genre: detail.genre || mlbdKind, category: mlbdCategoryForKind(mlbdKind), image_url: detail.poster || detail.image_url || detail.image || detail.thumbnail || null, is_featured: false } as AnimeItem); setMlbdSources(sources); setMlbdNotConfigured(sources.length === 0); if (sources.length === 0) { setPlaybackError(MLBD_NOT_CONFIGURED_MESSAGE); } else { setPlaybackError(null); } setRecommendations([]); return; } catch { setAnime({ id: String(id), title: mlbdSlug, description: null, episodes: 1, genre: mlbdKind, category: mlbdCategoryForKind(mlbdKind), image_url: null, is_featured: false } as AnimeItem); setMlbdSources([]); setMlbdNotConfigured(true); setPlaybackError(MLBD_NOT_CONFIGURED_MESSAGE); setRecommendations([]); return; } }
       if (!id) return;
       try {
         const [deletedIds, overrides] = await Promise.all([
@@ -217,7 +235,13 @@ export default function WatchScreen() {
   const downloadUrl: string | undefined = chosenSource?.download_url?.trim() || (anime as any)?.download_url?.trim() || undefined; const mlbdOrderedSources = [...mlbdSources].sort((a: any, b: any) => { const rank = (s: any) => { const t = String(s?.type || s?.format || '').toLowerCase(); if (t === 'mp4') return 0; if (t === 'mkv') return 1; const u = String(s?.url || s?.stream_url || '').toLowerCase(); if (u.endsWith('.mp4')) return 0; if (u.endsWith('.mkv')) return 1; return 2; }; return rank(a) - rank(b); }); const mlbdQualityOf = (s: any) => String(s?.quality || s?.label || s?.resolution || s?.name || 'Original'); const mlbdQualities: string[] = Array.from(new Set(mlbdOrderedSources.map(mlbdQualityOf))); const mlbdEffectiveQuality: string | null = mlbdQuality && mlbdQualities.includes(mlbdQuality) ? mlbdQuality : (mlbdQualities[0] ?? null); const mlbdChosenSource: any = mlbdEffectiveQuality ? mlbdOrderedSources.find((s: any) => mlbdQualityOf(s) === mlbdEffectiveQuality) : undefined; const mlbdChosenUrl: string | undefined = mlbdChosenSource ? String(mlbdChosenSource.url || mlbdChosenSource.stream_url || mlbdChosenSource.play_url || mlbdChosenSource.file || mlbdChosenSource.download_url || '').trim() || undefined : undefined; const mlbdDownloadUrl: string | undefined = mlbdChosenSource ? String(mlbdChosenSource.download_url || mlbdChosenSource.downloadUrl || '').trim() || undefined : undefined; const mlbdAudio: string | undefined = mlbdChosenSource?.audio ? (Array.isArray(mlbdChosenSource.audio) ? mlbdChosenSource.audio.join(', ') : String(mlbdChosenSource.audio)) : undefined;
 
   useEffect(() => {
-    if (!anime?.id) return; if (isMlbd) { if (mlbdChosenUrl && mlbdChosenUrl.startsWith('http')) { setVideoSource(mlbdChosenUrl); setPlaybackError(null); } else { setPlaybackError(MLBD_NOT_CONFIGURED_MESSAGE); } return; }
+    if (!anime?.id) return; 
+    if (isAnichin) {
+      const ep = anichinEpisodes.find((e: any) => Number(e.number ?? e.episodeNumber) === selectedEpisode);
+      if (ep && !ep.locked && String(ep.videoUrl || '').startsWith('http')) { setVideoSource(ep.videoUrl); setPlaybackError(null); } else { setPlaybackError(ep?.locked ? 'This episode is locked.' : 'This episode is not available yet.'); }
+      return;
+    }
+    if (isMlbd) { if (mlbdChosenUrl && mlbdChosenUrl.startsWith('http')) { setVideoSource(mlbdChosenUrl); setPlaybackError(null); } else { setPlaybackError(MLBD_NOT_CONFIGURED_MESSAGE); } return; }
     let cancelled = false;
 
     // Per-episode server + quality URL takes priority when present.
@@ -269,7 +293,7 @@ export default function WatchScreen() {
       });
 
     return () => { cancelled = true; };
-  }, [anime?.id, anime?.video_url, anime?.video_asset_key, anime?.episode_links, (anime as any)?.video_sources, (anime as any)?.download_url, selectedEpisode, chosenQualityUrl, mlbdChosenUrl, mlbdNotConfigured]);
+  }, [anime?.id, anime?.video_url, anime?.video_asset_key, anime?.episode_links, (anime as any)?.video_sources, (anime as any)?.download_url, selectedEpisode, chosenQualityUrl, mlbdChosenUrl, mlbdNotConfigured, anichinEpisodes]);
 
   const favorited = anime ? isFavorite(anime.id) : false;
   const stats = anime ? getStatsForMedia(anime.id) : { average: 4.8, count: 14 };
@@ -569,6 +593,19 @@ export default function WatchScreen() {
         )}
 
         {isMlbd && mlbdQualities.length > 0 && (<View style={[styles.speedMenu, { backgroundColor: themeColors.backgroundElement }]}><Text style={[styles.speedMenuTitle, { color: themeColors.textSecondary }]}>QUALITY</Text><View style={styles.speedOptionsGrid}>{mlbdQualities.map((q) => { const isCurrent = q === mlbdEffectiveQuality; return (<Pressable key={q} style={[styles.speedOptionChip, isCurrent ? [styles.speedOptionChipActive, { backgroundColor: themeColors.primary }] : { backgroundColor: themeColors.backgroundCard }]} onPress={() => setMlbdQuality(q)}><Text style={[styles.speedOptionText, { color: isCurrent ? '#fff' : '#9A9AA8' }]}>{q}</Text></Pressable>); })}</View>{mlbdAudio && (<Text style={[styles.speedMenuTitle, { color: themeColors.textSecondary, marginTop: 12 }]}>Audio: {mlbdAudio}</Text>)}</View>)} {/* DRM / Screen Protection Badge */}
+        {isAnichin && anichinEpisodes.length > 0 && (
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 12 }}>
+        {anichinEpisodes.map((episode: any) => {
+        const episodeNumber = Number(episode.number ?? episode.episodeNumber);
+        const locked = Boolean(episode.locked);
+        return (
+          <Pressable key={episodeNumber} onPress={() => { if (!locked) { setSelectedEpisode(episodeNumber); } }} style={{ borderWidth: 1, borderColor: locked ? '#555555' : themeColors.primary, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, opacity: locked ? 0.4 : 1, backgroundColor: selectedEpisode === episodeNumber ? themeColors.primary : 'transparent' }}>
+            <Text style={{ color: themeColors.text }}>{episodeNumber}</Text>
+          </Pressable>
+          );
+      })}
+      </View>
+      )}
         <View style={styles.drmBanner}>
           <Shield color={themeColors.primary} size={16} />
           <Text style={styles.drmText}>
