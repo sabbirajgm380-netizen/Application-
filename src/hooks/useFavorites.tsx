@@ -6,7 +6,7 @@ import { useAuth } from './useAuth';
 
 import { getDeletedMediaIds, getEditedMediaOverrides } from '@/lib/admin-operations';
 
-export type MediaCategory = 'Movies' | 'Anime Movies' | 'K-Drama' | 'Drama' | 'Anime Series';
+export type MediaCategory = 'Movies' | 'Anime Movies' | 'K-Drama' | 'Drama' | 'Anime Series' | 'Short Drama';
 
 export type AnimeItem = {
   id: string;
