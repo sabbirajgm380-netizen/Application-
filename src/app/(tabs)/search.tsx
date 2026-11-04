@@ -88,7 +88,14 @@ export default function SearchScreen() {
         combined = [...newLocalItems, ...customItems];
 
               const fetchJson = async (url: string, options?: any) => { try { const r = await fetch(url, options); return r.ok ? await r.json() : null; } catch { return null; } }; const mlbdPopularRes = await fetchJson('https://xzkbzcbcivilqvdearsq.supabase.co/functions/v1/mlbd-proxy?action=popular').catch(() => null); combined = [...combined, ...mapMlbdRowsToItems(mlbdPopularRes)];
-      setMediaList(combined);
+      
+        let anichinRes: any = null;
+        if (query) { anichinRes = await fetchJson(`https://api.anichin.bio/dramabox/search?query=${encodeURIComponent(query)}`); } else if (selectedCategory === 'Short Drama') { anichinRes = await fetchJson('https://api.anichin.bio/dramabox/trending'); }
+        const anichinItems = Array.isArray(anichinRes?.items) ? anichinRes.items : Array.isArray(anichinRes?.data?.items) ? anichinRes.data.items : [];
+        const anichinSeenIds = new Set(combined.map((item: any) => String(item.id)));
+        const anichinMapped = anichinItems.filter((item: any) => { const anichinId = `anichin-dramabox-${item.id || item.dramaId}`; if (anichinSeenIds.has(anichinId)) return false; anichinSeenIds.add(anichinId); return true; }).slice(0, 20).map((item: any) => ({ id: `anichin-dramabox-${item.id || item.dramaId}`, title: item.title, image_url: item.posterImg || item.cover || null, episodes: item.totalEpisodes || item.episodes || 1, genre: 'Short Drama', category: 'Short Drama', is_featured: false }));
+        combined = [...combined, ...anichinMapped];
+        setMediaList(combined);
       } catch (err) {
         console.warn('Error loading search data:', err);
         setMediaList([]);
