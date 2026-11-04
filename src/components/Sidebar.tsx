@@ -65,6 +65,7 @@ export function Sidebar({ isOpen, onClose, onOpenRewards }: SidebarProps) {
     { label: t('catKDrama'), icon: Sparkles, route: '/search', params: { category: 'K-Drama' } },
     { label: t('catDrama'), icon: Tv, route: '/search', params: { category: 'Drama' } },
     { label: t('catAnimeSeries'), icon: Zap, route: '/search', params: { category: 'Anime Series' } },
+      { label: 'Short Drama', icon: Sparkles, route: '/search', params: { category: 'Short Drama' } },
   ];
 
   const sidebarWidth = 260;
